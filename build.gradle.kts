@@ -33,7 +33,12 @@ dependencies {
     implementation("io.quarkus:quarkus-smallrye-health")
     implementation("io.quarkus:quarkus-arc")
 
+    implementation("net.dankito.banking:BankFinder-jvm:1.0.0-Alpha-9")
+    implementation("com.github.hbci4j:hbci4j-core:3.1.55")
+
     testImplementation("io.quarkus:quarkus-junit5")
+    testImplementation("io.rest-assured:rest-assured:4.4.0")
+    testImplementation("org.assertj:assertj-core:3.21.0")
 }
 
 
