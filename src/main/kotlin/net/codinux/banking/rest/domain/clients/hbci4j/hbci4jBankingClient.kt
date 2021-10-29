@@ -13,6 +13,7 @@ import org.kapott.hbci.manager.HBCIHandler
 import org.kapott.hbci.manager.HBCIUtils
 import org.kapott.hbci.manager.HBCIVersion
 import org.kapott.hbci.passport.AbstractHBCIPassport
+import org.kapott.hbci.passport.AbstractPinTanPassport
 import org.kapott.hbci.passport.HBCIPassport
 import org.kapott.hbci.status.HBCIExecStatus
 import org.slf4j.LoggerFactory
@@ -103,6 +104,8 @@ open class hbci4jBankingClient(
             // "None" verwendet. Bei PIN/TAN kommt "Base64" zum Einsatz.
             passport.filterType = "Base64"
 
+            mapBankDataFromPassport(passport, bank)
+
             // Verbindung zum Server aufbauen
             handle = HBCIHandler(version.getId(), passport)
 
@@ -116,6 +119,22 @@ open class hbci4jBankingClient(
         }
 
         return ConnectResult(true, null, handle, passport)
+    }
+
+    private fun mapBankDataFromPassport(passport: HBCIPassport, bank: BankData) {
+        // when passport has been created before, allowedTwostepMechanisms is already set (and HbciCallback's selectTanMethod() will not be called therefore we can't do it there)
+        (passport as? AbstractPinTanPassport)?.let { pinTanPassport ->
+            if (pinTanPassport.allowedTwostepMechanisms.isNotEmpty()) {
+                bank.supportedTanMethods = mapper.mapTanMethods(pinTanPassport)
+
+                if (bank.selectedTanMethod != null) {
+                    val currentTanMethodCode = pinTanPassport.getCurrentTANMethod(false)
+                    bank.selectedTanMethod = bank.supportedTanMethods.firstOrNull { it.bankInternalMethodCode == currentTanMethodCode }
+                }
+
+                // TODO: get TAN media
+            }
+        }
     }
 
     protected open fun getPassportFile(bank: BankData): File {
