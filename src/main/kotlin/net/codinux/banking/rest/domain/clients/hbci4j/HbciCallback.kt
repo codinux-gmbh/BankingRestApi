@@ -59,7 +59,7 @@ open class HbciCallback(
             /*          TAN         */
 
             // ADDED: Auswaehlen welches PinTan Verfahren verwendet werden soll
-            HBCICallback.NEED_PT_SECMECH -> selectTanMethod(retData.toString())?.let { selectedTanMethod ->
+            HBCICallback.NEED_PT_SECMECH -> selectTanMethod(passport, retData.toString())?.let { selectedTanMethod ->
                 bank.selectedTanMethod = selectedTanMethod
                 retData.replace(0, retData.length, selectedTanMethod.bankInternalMethodCode)
             }
@@ -141,8 +141,8 @@ open class HbciCallback(
 
 
 
-    open fun selectTanMethod(supportedTanMethodsString: String): TanMethod? {
-        val supportedTanMethods = mapper.mapTanMethods(supportedTanMethodsString)
+    open fun selectTanMethod(passport: HBCIPassport, supportedTanMethodsString: String): TanMethod? {
+        val supportedTanMethods = mapper.mapTanMethods(passport, supportedTanMethodsString)
 
         bank.supportedTanMethods = supportedTanMethods
 

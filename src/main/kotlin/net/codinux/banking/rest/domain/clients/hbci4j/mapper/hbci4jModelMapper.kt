@@ -59,34 +59,42 @@ open class hbci4jModelMapper {
         return BigDecimal.valueOf(value.longValue).divide(BigDecimal.valueOf(100))
     }
 
-
-    open fun mapTanMethods(tanMethodsString: String): List<TanMethod> {
+    fun mapTanMethods(passport: HBCIPassport, tanMethodsString: String): List<TanMethod> {
         return tanMethodsString.split('|')
-            .map { mapTanMethod(it) }
+            .map { mapTanMethod(passport, it) }
             .filterNotNull()
     }
 
-    open fun mapTanMethod(tanMethodString: String): TanMethod? {
+    fun mapTanMethod(passport: HBCIPassport, tanMethodString: String): TanMethod? {
         val parts = tanMethodString.split(':')
 
         if (parts.size > 1) {
             val code = parts[0]
             val displayName = parts[1]
             val displayNameLowerCase = displayName.toLowerCase()
+            var maxTanInputLength: Int? = null
+            var allowedTanFormat: AllowedTanFormat = AllowedTanFormat.Alphanumeric
+
+            (passport as? AbstractPinTanPassport)?.twostepMechanisms?.get(code)?.let { tanMethodProperties ->
+                maxTanInputLength = tanMethodProperties["maxlentan2step"]?.toString()?.toIntOrNull()
+                if (tanMethodProperties["tanformat"] == "1") {
+                    allowedTanFormat = AllowedTanFormat.Numeric
+                }
+            }
 
             return when {
                 // TODO: implement all TAN methods
                 displayNameLowerCase.contains("chiptan") -> {
                     if (displayNameLowerCase.contains("qr")) {
-                        TanMethod(displayName, TanMethodType.ChipTanQrCode, code)
+                        TanMethod(displayName, TanMethodType.ChipTanQrCode, code, maxTanInputLength, allowedTanFormat)
                     }
                     else {
-                        TanMethod(displayName, TanMethodType.ChipTanFlickercode, code)
+                        TanMethod(displayName, TanMethodType.ChipTanFlickercode, code, maxTanInputLength, allowedTanFormat)
                     }
                 }
 
-                displayNameLowerCase.contains("sms") -> TanMethod(displayName, TanMethodType.SmsTan, code)
-                displayNameLowerCase.contains("push") -> TanMethod(displayName, TanMethodType.AppTan, code)
+                displayNameLowerCase.contains("sms") -> TanMethod(displayName, TanMethodType.SmsTan, code, maxTanInputLength, allowedTanFormat)
+                displayNameLowerCase.contains("push") -> TanMethod(displayName, TanMethodType.AppTan, code, maxTanInputLength, allowedTanFormat)
 
                 // we filter out iTAN and Einschritt-Verfahren as they are not permitted anymore according to PSD2
                 else -> null
