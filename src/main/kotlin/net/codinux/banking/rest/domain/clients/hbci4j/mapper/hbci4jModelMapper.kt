@@ -210,11 +210,20 @@ class hbci4jModelMapper {
         val parsedReference = Mt940Parser().getReferenceParts(unparsedReference)
         val statementAndMaySequenceNumber = btag.counter.split('/')
 
+        var otherPartyName: String? = null
+        var otherPartyBankCode: String? = null
+        var otherPartyAccountId: String? = null
+        transaction.other?.let { other ->
+            otherPartyName = other.name + (other.name2 ?: "")
+            otherPartyBankCode = other.bic ?: other.blz
+            otherPartyAccountId = other.iban ?: other.number
+        }
+
         return AccountTransaction(
             mapValue(transaction.value), transaction.value.curr, unparsedReference, transaction.bdate,
-            transaction.other.name + (transaction.other.name2 ?: ""),
-            transaction.other.bic ?: transaction.other.blz,
-            transaction.other.iban ?: transaction.other.number,
+            otherPartyName,
+            otherPartyBankCode,
+            otherPartyAccountId,
             transaction.text, transaction.valuta,
             statementAndMaySequenceNumber[0].toInt(),
             if (statementAndMaySequenceNumber.size > 1) statementAndMaySequenceNumber[1].toInt() else null,
