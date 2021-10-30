@@ -4,6 +4,7 @@ import net.codinux.banking.rest.domain.model.*
 import net.codinux.banking.rest.domain.model.tan.*
 import net.dankito.banking.fints.transactions.mt940.Mt940Parser
 import org.kapott.hbci.GV_Result.GVRKUms
+import org.kapott.hbci.manager.HBCIUser
 import org.kapott.hbci.passport.AbstractPinTanPassport
 import org.kapott.hbci.passport.HBCIPassport
 import org.kapott.hbci.structures.Konto
@@ -191,14 +192,17 @@ class hbci4jModelMapper {
 
 
     fun mapTanMedia(passport: AbstractPinTanPassport): List<TanMedium>? {
-        return mapTanMedia(passport.upd.getProperty("tanmedia.names", ""))
+        return mapTanMedia(passport.upd.getProperty(HBCIUser.UPD_KEY_TANMEDIA, ""))
     }
 
     fun mapTanMedia(tanMediaNamesString: String): List<TanMedium>? {
         val tanMediaNames = tanMediaNamesString.split('|')
 
         if (tanMediaNames.size > 0 && tanMediaNames[0].isNotBlank()) { // hbci4 is funny, NEED_PT_TANMEDIA sometimes is called is an empty retData
-            return tanMediaNames.map { TanMedium(it, TanMediumStatus.Available) } // TODO: get TanMediumStatus
+            return tanMediaNames.map {
+                // in HBCIDialogTanMedia.checkResult all inactive tan media get filtered out -> we can be sure that they are used
+                TanMedium(it, TanMediumStatus.Used)
+            }
         }
 
         return null
