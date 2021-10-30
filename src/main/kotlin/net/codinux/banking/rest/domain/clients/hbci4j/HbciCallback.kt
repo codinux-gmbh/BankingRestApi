@@ -59,10 +59,7 @@ class HbciCallback(
             /*          TAN         */
 
             // ADDED: Auswaehlen welches PinTan Verfahren verwendet werden soll
-            HBCICallback.NEED_PT_SECMECH -> selectTanMethod(passport, retData.toString())?.let { selectedTanMethod ->
-                bank.selectedTanMethod = selectedTanMethod
-                retData.replace(0, retData.length, selectedTanMethod.bankInternalMethodCode)
-            }
+            HBCICallback.NEED_PT_SECMECH -> selectTanMethod(passport, retData)
 
             // chipTan or simple TAN request (iTAN, smsTAN, ...)
             HBCICallback.NEED_PT_TAN -> {
@@ -140,8 +137,9 @@ class HbciCallback(
     }
 
 
-    private fun selectTanMethod(passport: HBCIPassport, supportedTanMethodsString: String): TanMethod? {
+    private fun selectTanMethod(passport: HBCIPassport, returnData: StringBuffer) {
         if (/* bank.supportedTanMethods.isEmpty() && */ passport is AbstractPinTanPassport) {
+            val supportedTanMethodsString = returnData.toString()
             bank.supportedTanMethods = mapper.mapTanMethods(passport, supportedTanMethodsString)
         }
 
@@ -149,13 +147,13 @@ class HbciCallback(
 
         if (supportedTanMethods.isNotEmpty()) {
             // select any method, user then can select her preferred one in EnterTanDialog; try not to select 'chipTAN manuell'
-            return supportedTanMethods.firstOrNull { it.type == TanMethodType.AppTan }
+            bank.selectedTanMethod = supportedTanMethods.firstOrNull { it.type == TanMethodType.AppTan }
                 ?: supportedTanMethods.firstOrNull { it.type == TanMethodType.SmsTan }
                 ?: supportedTanMethods.firstOrNull { it.displayName.contains("manuell", true) }
                 ?: supportedTanMethods.firstOrNull()
-        }
 
-        return null
+            returnData.replace(0, returnData.length, bank.selectedTanMethod?.bankInternalMethodCode)
+        }
     }
 
 
