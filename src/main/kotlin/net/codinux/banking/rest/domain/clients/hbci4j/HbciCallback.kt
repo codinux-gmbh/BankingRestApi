@@ -2,12 +2,14 @@ package net.codinux.banking.rest.domain.clients.hbci4j
 
 import net.codinux.banking.rest.domain.clients.hbci4j.mapper.hbci4jModelMapper
 import net.codinux.banking.rest.domain.model.BankData
-import net.codinux.banking.rest.domain.model.tan.TanMethod
+import net.codinux.banking.rest.domain.model.BankingClientCallback
+import net.codinux.banking.rest.domain.model.tan.*
 import org.kapott.hbci.callback.AbstractHBCICallback
 import org.kapott.hbci.callback.HBCICallback
 import org.kapott.hbci.manager.HBCIUtils
 import org.kapott.hbci.manager.MatrixCode
 import org.kapott.hbci.manager.QRCode
+import org.kapott.hbci.passport.AbstractPinTanPassport
 import org.kapott.hbci.passport.HBCIPassport
 import org.slf4j.LoggerFactory
 
@@ -18,7 +20,8 @@ import org.slf4j.LoggerFactory
  */
 class HbciCallback(
     private val bank: BankData,
-    private val mapper: hbci4jModelMapper
+    private val mapper: hbci4jModelMapper,
+    private val callback: BankingClientCallback
 ) : AbstractHBCICallback() {
 
     companion object {
@@ -62,21 +65,18 @@ class HbciCallback(
             HBCICallback.NEED_PT_SECMECH -> selectTanMethod(passport, retData)
 
             // chipTan or simple TAN request (iTAN, smsTAN, ...)
-            HBCICallback.NEED_PT_TAN -> {
-                getTanFromUser(bank, msg, retData.toString())?.let { enteredTan ->
-                    retData.replace(0, retData.length, enteredTan)
-                }
-            }
+            HBCICallback.NEED_PT_TAN -> getTanFromUser(msg, retData)
 
             // chipTAN-QR
             HBCICallback.NEED_PT_QRTAN -> { // use class QRCode to display QR code
-                val qrData = retData.toString()
-                val qrCode = QRCode(qrData, msg)
+                val qrCode = QRCode(retData.toString(), msg)
+                getTanFromUser(TanImage(qrCode.mimetype, qrCode.image), msg, retData)
             }
 
             // photoTan
             HBCICallback.NEED_PT_PHOTOTAN -> { // use class MatrixCode to display photo
                 val matrixCode = MatrixCode(retData.toString())
+                getTanFromUser(TanImage(matrixCode.mimetype, matrixCode.image), msg, retData)
             }
 
             // select which TAN medium to use
@@ -133,7 +133,33 @@ class HbciCallback(
         // Der Text aus "msg" sollte daher im Dialog dem User angezeigt
         // werden.
 
-        return null
+        val challengeHHD_UC = returnData.toString()
+
+        val tanChallenge = if (challengeHHD_UC.isBlank()) {
+            TanChallenge(messageToShowToUser, bank.selectedTanMethod!!)
+        }
+        else {
+            // for Sparkasse messageToShowToUser started with "chipTAN optisch\nTAN-Nummer\n\n"
+            val usefulMessage = messageToShowToUser.split("\n").last().trim()
+
+            FlickerCodeTanChallenge(FlickerCode("", challengeHHD_UC), usefulMessage, bank.selectedTanMethod!!)
+        }
+
+        getTanFromUser(tanChallenge, returnData)
+    }
+
+    private fun getTanFromUser(tanImage: TanImage, messageToShowToUser: String, returnData: StringBuffer) {
+        val tanChallenge = ImageTanChallenge(tanImage, messageToShowToUser, bank.selectedTanMethod!!)
+
+        getTanFromUser(tanChallenge, returnData)
+    }
+
+    private fun getTanFromUser(tanChallenge: TanChallenge, returnData: StringBuffer) {
+        callback.enterTan(bank, tanChallenge) { result ->
+            result.enteredTan?.let { enteredTan ->
+                returnData.replace(0, returnData.length, enteredTan)
+            }
+        }
     }
 
 

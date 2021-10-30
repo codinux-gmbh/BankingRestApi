@@ -2,11 +2,9 @@ package net.codinux.banking.rest.api
 
 import net.codinux.banking.rest.domain.BankingService
 import net.codinux.banking.rest.domain.model.*
+import net.codinux.banking.rest.domain.model.tan.EnterTanResult
 import javax.inject.Inject
-import javax.ws.rs.Consumes
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
+import javax.ws.rs.*
 import javax.ws.rs.core.MediaType
 
 
@@ -33,6 +31,12 @@ class BankingResource {
     }
 
     return service.getAccountTransactions(config)
+  }
+
+  @POST
+  @Path("tan/{tanRequestId}")
+  fun postEnterTanResult(@PathParam("tanRequestId") tanRequestId: String, enterTanResult: EnterTanResult): Response<*> {
+    return service.handleTanResponse(tanRequestId, enterTanResult)
   }
 
 }

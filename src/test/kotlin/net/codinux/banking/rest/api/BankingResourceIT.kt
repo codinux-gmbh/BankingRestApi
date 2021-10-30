@@ -5,8 +5,11 @@ import io.restassured.RestAssured.given
 import io.restassured.http.ContentType
 import io.restassured.response.Response
 import net.codinux.banking.rest.domain.model.*
+import net.codinux.banking.rest.domain.model.tan.EnterTanResult
+import net.codinux.banking.rest.domain.model.tan.TanRequired
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.CoreMatchers.*
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
 @QuarkusTest
@@ -33,7 +36,7 @@ class BankingResourceIT {
   @Test
   fun getAccountData() {
 
-    val bankData = postAndValidate("account", getCredentials(), BankData::class.java)
+    val bankData = postAndValidateSuccessful("account", getCredentials(), BankData::class.java)
 
     assertThat(bankData.bankCode).isEqualTo(bankCode)
     assertThat(bankData.loginName).isEqualTo(loginName)
@@ -48,10 +51,31 @@ class BankingResourceIT {
   fun getAccountTransactionsOfLast90Days() {
     val config = GetAccountTransactionsConfig(getCredentials(), getBankAccountIdentifier(), getTransactionsOfLast90Days = true)
 
-    val result = postAndValidate("transactions", config, RetrievedAccountTransactions::class.java)
+    val result = postAndValidateSuccessful("transactions", config, RetrievedAccountTransactions::class.java)
 
     assertThat(result.balance).isNotNull()
     assertThat(result.transactions).isNotEmpty
+  }
+
+  @Disabled // not an automatic test, requires manually entering a TAN
+  @Test
+  fun getAccountTransactions() {
+    val config = GetAccountTransactionsConfig(getCredentials(), getBankAccountIdentifier())
+
+    val tanRequiredResult = postAndValidateTanRequired("transactions", config)
+
+    val tanChallenge = tanRequiredResult.tanChallenge // just that you can better see it in debug window
+
+    val enteredTan: String? = null
+
+
+    // TODO: if you a TAN method that does not required data from tanChallenge above like AppTan or SmsTan, create a debugging break point below,
+    // get the TAN and then set enteredTan variable in debug window with 'Set variable...'
+
+    val transactionsResult = postAndValidateSuccessful("tan/${tanRequiredResult.tanRequestId}", EnterTanResult(enteredTan), RetrievedAccountTransactions::class.java)
+
+    assertThat(transactionsResult.balance).isNotNull()
+    assertThat(transactionsResult.transactions).isNotEmpty
   }
 
 
@@ -68,18 +92,40 @@ class BankingResourceIT {
             .post("/banking/v1/" + endpoint)
   }
 
-  private fun <T> postAndValidate(endpoint: String, body: Any, responseClass: Class<T>): T {
+  private fun <T> postAndValidateSuccessful(endpoint: String, body: Any, responseClass: Class<T>): T {
+    val response = postAndValidateBasicData(endpoint, body)
+
+    response.then()
+      .body("successful", `is`(true))
+      .body("error", nullValue())
+      .body("data", not(nullValue()))
+      .body("tanRequired", nullValue())
+
+    return response.jsonPath().getObject("data", responseClass)
+  }
+
+  private fun postAndValidateTanRequired(endpoint: String, body: Any): TanRequired {
+    val response = postAndValidateBasicData(endpoint, body)
+
+    response.then()
+      .body("successful", `is`(false))
+      .body("error", nullValue())
+      .body("data", nullValue())
+      .body("tanRequired", not(nullValue()))
+
+    return response.jsonPath().getObject("tanRequired", TanRequired::class.java)
+  }
+
+  private fun postAndValidateBasicData(endpoint: String, body: Any): Response {
     val response = post(endpoint, body)
 
     response.then()
       .log().all()
       .statusCode(200)
       .contentType(ContentType.JSON)
-      .body("successful", `is`(true))
       .body("error", nullValue())
-      .body("data", not(nullValue()))
 
-    return response.jsonPath().getObject("data", responseClass)
+    return response
   }
 
 }

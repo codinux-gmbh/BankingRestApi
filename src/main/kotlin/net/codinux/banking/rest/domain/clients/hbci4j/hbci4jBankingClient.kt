@@ -23,6 +23,7 @@ import java.util.*
 
 class hbci4jBankingClient(
     private val bank: BankData,
+    private val callback: BankingClientCallback,
     private val dataFolder: File = File("hbci4j")
 ) : IBankingClient {
 
@@ -155,7 +156,7 @@ class hbci4jBankingClient(
         // In "props" koennen optional Kernel-Parameter abgelegt werden, die in der Klasse
         // org.kapott.hbci.manager.HBCIUtils (oben im Javadoc) beschrieben sind.
         val props = Properties()
-        HBCIUtils.init(props, HbciCallback(bank, mapper))
+        HBCIUtils.init(props, HbciCallback(bank, mapper, callback))
 
         // In der Passport-Datei speichert HBCI4Java die Daten des Bankzugangs (Bankparameterdaten, Benutzer-Parameter, etc.).
         // Die Datei kann problemlos geloescht werden. Sie wird beim naechsten mal automatisch neu erzeugt,

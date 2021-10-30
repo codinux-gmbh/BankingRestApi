@@ -1,15 +1,20 @@
 package net.codinux.banking.rest.domain.model
 
-
-class Response<T>(val data: T?) {
-
-  constructor(error: String) : this(null) {
-    this.error = error
-  }
+import net.codinux.banking.rest.domain.model.tan.TanRequired
 
 
-  var error: String? = null
-    private set
+class Response<T>(
+  val data: T?,
+  val error: String?,
+  val tanRequired: TanRequired?
+) {
+
+  constructor(data: T) : this(data, null, null)
+
+  constructor(error: String) : this(null, error, null)
+
+  constructor(tanRequired: TanRequired) : this(null, null, tanRequired)
+
 
   val successful: Boolean
     get() = data != null
