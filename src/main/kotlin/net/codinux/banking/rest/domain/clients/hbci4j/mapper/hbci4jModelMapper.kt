@@ -83,34 +83,80 @@ class hbci4jModelMapper {
         return null
     }
 
-    private fun mapTanMethod(passport: HBCIPassport, tanMethodCode: String, displayName: String): TanMethod? {
-        val displayNameLowerCase = displayName.toLowerCase()
-        var maxTanInputLength: Int? = null
-        var allowedTanFormat: AllowedTanFormat = AllowedTanFormat.Alphanumeric
+    private fun mapTanMethod(passport: AbstractPinTanPassport, tanMethodCode: String, displayName: String): TanMethod? {
+        val type = mapToTanMethodType(displayName)
+        if (type != null) {
 
-        (passport as? AbstractPinTanPassport)?.twostepMechanisms?.get(tanMethodCode)?.let { tanMethodProperties ->
-            maxTanInputLength = tanMethodProperties["maxlentan2step"]?.toString()?.toIntOrNull()
-            if (tanMethodProperties["tanformat"] == "1") {
-                allowedTanFormat = AllowedTanFormat.Numeric
-            }
-        }
+            var maxTanInputLength: Int? = null
+            var allowedTanFormat: AllowedTanFormat = AllowedTanFormat.Alphanumeric
 
-        return when {
-            // TODO: implement all TAN methods
-            displayNameLowerCase.contains("chiptan") -> {
-                if (displayNameLowerCase.contains("qr")) {
-                    TanMethod(displayName, TanMethodType.ChipTanQrCode, tanMethodCode, maxTanInputLength, allowedTanFormat)
-                } else {
-                    TanMethod(displayName, TanMethodType.ChipTanFlickercode, tanMethodCode, maxTanInputLength, allowedTanFormat)
+            passport.twostepMechanisms?.get(tanMethodCode)?.let { tanMethodProperties ->
+                maxTanInputLength = tanMethodProperties["maxlentan2step"]?.toString()?.toIntOrNull()
+                if (tanMethodProperties["tanformat"] == "1") {
+                    allowedTanFormat = AllowedTanFormat.Numeric
                 }
             }
 
-            displayNameLowerCase.contains("sms") -> TanMethod(displayName, TanMethodType.SmsTan, tanMethodCode, maxTanInputLength, allowedTanFormat)
-            displayNameLowerCase.contains("push") -> TanMethod(displayName, TanMethodType.AppTan, tanMethodCode, maxTanInputLength, allowedTanFormat)
+            return TanMethod(displayName, type, tanMethodCode, maxTanInputLength, allowedTanFormat)
+        }
+
+        return null
+    }
+
+    // TODO: also check DkTanMethod and technicalTanMethodIdentification, see fints4k ModelMapper.mapToTanMethodType()
+    private fun mapToTanMethodType(methodName: String): TanMethodType? {
+        val name = methodName.toLowerCase()
+
+        return when {
+            // names are like 'chipTAN (comfort) manuell', 'Smart(-)TAN plus (manuell)' and
+            // technical identification is 'HHD'. Exception:  there's one that states itself as 'chipTAN (Manuell)'
+            // but its DkTanMethod is set to 'HHDOPT1' -> handle ChipTanManuell before ChipTanFlickercode
+            name.contains("manuell") ->
+                TanMethodType.ChipTanManuell
+
+            // names are like 'chipTAN optisch/comfort', 'SmartTAN (plus) optic/USB', 'chipTAN (Flicker)' and
+            // technical identification is 'HHDOPT1'
+            tanMethodNameContains(name, "optisch", "optic", "comfort", "flicker") ->
+                TanMethodType.ChipTanFlickercode
+
+            // 'Smart-TAN plus optisch / USB' seems to be a Flickertan method -> test for 'optisch' first
+            name.contains("usb") -> TanMethodType.ChipTanUsb
+
+            // QRTAN+ from 1822 direct has nothing to do with chipTAN QR.
+            name.contains("qr") -> {
+                if (tanMethodNameContains(name, "chipTAN", "Smart")) TanMethodType.ChipTanQrCode
+                else TanMethodType.QrCode
+            }
+
+            // photoTAN from Commerzbank (comdirect), Deutsche Bank, norisbank has nothing to do with chipTAN photo
+            name.contains("photo") -> {
+                // e.g. 'Smart-TAN photo' / description 'Challenge'
+                if (tanMethodNameContains(name, "chipTAN", "Smart")) TanMethodType.ChipTanPhotoTanMatrixCode
+                // e.g. 'photoTAN-Verfahren', description 'Freigabe durch photoTAN'
+                else TanMethodType.photoTan
+            }
+
+            tanMethodNameContains(name, "SMS", "mobile", "mTAN") -> TanMethodType.SmsTan
+
+            // 'flateXSecure' identifies itself as 'PPTAN' instead of 'AppTAN'
+            // 'activeTAN-Verfahren' can actually be used either with an app or a reader; it's like chipTAN QR but without a chip card
+            tanMethodNameContains(name, "push", "app", "BestSign", "SecureGo", "TAN2go", "activeTAN", "easyTAN", "SecurePlus", "TAN+")
+              /*|| technicalTanMethodIdentificationContains(parameters, "SECURESIGN", "PPTAN")*/ ->
+                TanMethodType.AppTan
 
             // we filter out iTAN and Einschritt-Verfahren as they are not permitted anymore according to PSD2
             else -> null
         }
+    }
+
+    private fun tanMethodNameContains(name: String, vararg namesToTest: String): Boolean {
+        namesToTest.forEach { nameToTest ->
+            if (name.contains(nameToTest.toLowerCase())) {
+                return true
+            }
+        }
+
+        return false
     }
 
 
