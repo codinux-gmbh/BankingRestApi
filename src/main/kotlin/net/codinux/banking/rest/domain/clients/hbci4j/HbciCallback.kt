@@ -16,9 +16,9 @@ import org.slf4j.LoggerFactory
  * Ueber diesen Callback kommuniziert HBCI4Java mit dem Benutzer und fragt die benoetigten
  * Informationen wie Benutzerkennung, PIN usw. ab.
  */
-open class HbciCallback(
-    protected val bank: BankData,
-    protected val mapper: hbci4jModelMapper,
+class HbciCallback(
+    private val bank: BankData,
+    private val mapper: hbci4jModelMapper
 ) : AbstractHBCICallback() {
 
     companion object {
@@ -125,7 +125,7 @@ open class HbciCallback(
     }
 
 
-    open fun getTanFromUser(bank: BankData, messageToShowToUser: String, challengeHHD_UC: String): String? {
+    private fun getTanFromUser(messageToShowToUser: String, returnData: StringBuffer) {
         // Wenn per "retData" Daten uebergeben wurden, dann enthalten diese
         // den fuer chipTAN optisch zu verwendenden Flickercode.
         // Falls nicht, ist es eine TAN-Abfrage, fuer die keine weiteren
@@ -140,17 +140,18 @@ open class HbciCallback(
     }
 
 
-
-    open fun selectTanMethod(passport: HBCIPassport, supportedTanMethodsString: String): TanMethod? {
+    private fun selectTanMethod(passport: HBCIPassport, supportedTanMethodsString: String): TanMethod? {
         if (/* bank.supportedTanMethods.isEmpty() && */ passport is AbstractPinTanPassport) {
-            bank.supportedTanMethods = mapper.mapTanMethods(passport)
+            bank.supportedTanMethods = mapper.mapTanMethods(passport, supportedTanMethodsString)
         }
 
         val supportedTanMethods = bank.supportedTanMethods
 
         if (supportedTanMethods.isNotEmpty()) {
             // select any method, user then can select her preferred one in EnterTanDialog; try not to select 'chipTAN manuell'
-            return supportedTanMethods.firstOrNull { it.displayName.contains("manuell", true) == false }
+            return supportedTanMethods.firstOrNull { it.type == TanMethodType.AppTan }
+                ?: supportedTanMethods.firstOrNull { it.type == TanMethodType.SmsTan }
+                ?: supportedTanMethods.firstOrNull { it.displayName.contains("manuell", true) }
                 ?: supportedTanMethods.firstOrNull()
         }
 
