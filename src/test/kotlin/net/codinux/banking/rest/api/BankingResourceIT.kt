@@ -41,10 +41,14 @@ class BankingResourceIT {
     assertThat(bankData.supportedTanMethods).isNotEmpty
   }
 
+  /**
+   * In most cases retrieving account transactions of last 90 days works without having to enter a TAN.
+   */
   @Test
-  fun getAccountTransactions() {
+  fun getAccountTransactionsOfLast90Days() {
+    val config = GetAccountTransactionsConfig(getCredentials(), getBankAccountIdentifier(), getTransactionsOfLast90Days = true)
 
-    val result = postAndValidate("transactions", GetAccountTransactionsConfig(getCredentials(), getBankAccountIdentifier()), RetrievedAccountTransactions::class.java)
+    val result = postAndValidate("transactions", config, RetrievedAccountTransactions::class.java)
 
     assertThat(result.balance).isNotNull()
     assertThat(result.transactions).isNotEmpty

@@ -28,7 +28,11 @@ class BankingResource {
   @POST
   @Path("transactions")
   fun getAccountTransactions(config: GetAccountTransactionsConfig): Response<RetrievedAccountTransactions> {
-    return service.getAccountTransactionsOfLast90Days(config) // we don't support entering TANs yet
+    if (config.getTransactionsOfLast90Days) {
+      return service.getAccountTransactionsOfLast90Days(config)
+    }
+
+    return service.getAccountTransactions(config)
   }
 
 }
