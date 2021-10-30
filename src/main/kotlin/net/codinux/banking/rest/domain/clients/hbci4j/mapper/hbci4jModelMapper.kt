@@ -1,9 +1,7 @@
 package net.codinux.banking.rest.domain.clients.hbci4j.mapper
 
 import net.codinux.banking.rest.domain.model.*
-import net.codinux.banking.rest.domain.model.tan.AllowedTanFormat
-import net.codinux.banking.rest.domain.model.tan.TanMethod
-import net.codinux.banking.rest.domain.model.tan.TanMethodType
+import net.codinux.banking.rest.domain.model.tan.*
 import net.dankito.banking.fints.transactions.mt940.Mt940Parser
 import org.kapott.hbci.GV_Result.GVRKUms
 import org.kapott.hbci.passport.AbstractPinTanPassport
@@ -189,6 +187,21 @@ class hbci4jModelMapper {
         }
 
         return false
+    }
+
+
+    fun mapTanMedia(passport: AbstractPinTanPassport): List<TanMedium>? {
+        return mapTanMedia(passport.upd.getProperty("tanmedia.names", ""))
+    }
+
+    fun mapTanMedia(tanMediaNamesString: String): List<TanMedium>? {
+        val tanMediaNames = tanMediaNamesString.split('|')
+
+        if (tanMediaNames.size > 0 && tanMediaNames[0].isNotBlank()) { // hbci4 is funny, NEED_PT_TANMEDIA sometimes is called is an empty retData
+            return tanMediaNames.map { TanMedium(it, TanMediumStatus.Available) } // TODO: get TanMediumStatus
+        }
+
+        return null
     }
 
 

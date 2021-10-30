@@ -79,9 +79,9 @@ class HbciCallback(
                 val matrixCode = MatrixCode(retData.toString())
             }
 
-            // smsTan: Select cell phone to which SMS should be send
+            // select which TAN medium to use
             HBCICallback.NEED_PT_TANMEDIA -> {
-                log.info("TODO: select cell phone: $msg ($retData)")
+                selectTanMedium(msg, retData)
             }
 
             // wrong pin entered -> inform user
@@ -94,9 +94,9 @@ class HbciCallback(
                 log.info("TODO: UserId changed: $msg ($retData)")
             }
 
-            // user entered wrong Banleitzahl or Kontonummer -> inform user
+            // user entered wrong Bankleitzahl or Kontonummer -> inform user
             HBCICallback.HAVE_CRC_ERROR -> { // retData contains wrong values in form "BLZ|KONTONUMMER". Set correct ones in the same form in retData
-                log.info("TODO: wrong Banleitzahl or Kontonummer entered: $msg ($retData)")
+                log.info("TODO: wrong Bankleitzahl or Kontonummer entered: $msg ($retData)")
             }
 
             // user entered wrong IBAN -> inform user
@@ -153,6 +153,18 @@ class HbciCallback(
                 ?: supportedTanMethods.firstOrNull()
 
             returnData.replace(0, returnData.length, bank.selectedTanMethod?.bankInternalMethodCode)
+        }
+    }
+
+    private fun selectTanMedium(message: String, returnData: StringBuffer) {
+        log.info("Select TAN medium: $message ($returnData)")
+
+        mapper.mapTanMedia(returnData.toString())?.let { tanMedia ->
+            bank.tanMedia = tanMedia
+
+            if (tanMedia.isNotEmpty()) {
+                returnData.replace(0, returnData.length, tanMedia[0].displayName)
+            }
         }
     }
 

@@ -21,9 +21,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 
-open class hbci4jBankingClient(
-    protected val bank: BankData,
-    protected val dataFolder: File = File("hbci4j")
+class hbci4jBankingClient(
+    private val bank: BankData,
+    private val dataFolder: File = File("hbci4j")
 ) : IBankingClient {
 
     companion object {
@@ -34,7 +34,7 @@ open class hbci4jBankingClient(
     }
 
 
-    protected val mapper = hbci4jModelMapper()
+    private val mapper = hbci4jModelMapper()
 
 
     override fun getAccountData(): Response<BankData> {
@@ -112,7 +112,7 @@ open class hbci4jBankingClient(
         return Response(connection.error?.getInnerExceptionMessage() ?: "Could not connect")
     }
 
-    protected open fun executeJobsForGetAccountTransactions(handle: HBCIHandler, bank: BankData, config: GetAccountTransactionsConfig): Triple<HBCIJob?, HBCIJob, HBCIExecStatus> {
+    private fun executeJobsForGetAccountTransactions(handle: HBCIHandler, bank: BankData, config: GetAccountTransactionsConfig): Triple<HBCIJob?, HBCIJob, HBCIExecStatus> {
         val konto = mapper.mapToKonto(bank, config.account)
 
         // 1. Auftrag fuer das Abrufen des Saldos erzeugen
@@ -146,11 +146,11 @@ open class hbci4jBankingClient(
     }
 
 
-    protected open fun connect(): ConnectResult {
+    private fun connect(): ConnectResult {
         return connect(bank, HBCIVersion.HBCI_300)
     }
 
-    protected open fun connect(bank: BankData, version: HBCIVersion): ConnectResult {
+    private fun connect(bank: BankData, version: HBCIVersion): ConnectResult {
         // HBCI4Java initialisieren
         // In "props" koennen optional Kernel-Parameter abgelegt werden, die in der Klasse
         // org.kapott.hbci.manager.HBCIUtils (oben im Javadoc) beschrieben sind.
@@ -221,12 +221,13 @@ open class hbci4jBankingClient(
                     bank.selectedTanMethod = bank.supportedTanMethods.firstOrNull { it.bankInternalMethodCode == currentTanMethodCode }
                 }
 
-                // TODO: get TAN media
+
+                mapper.mapTanMedia(pinTanPassport)?.let { bank.tanMedia = it }
             }
         }
     }
 
-    protected open fun getPassportFile(bank: BankData): File {
+    private fun getPassportFile(bank: BankData): File {
         val hbciClientFolder = File(dataFolder, "hbci4j-client")
         hbciClientFolder.mkdirs()
 
@@ -237,11 +238,11 @@ open class hbci4jBankingClient(
         return passportFile
     }
 
-    protected open fun closeConnection(connection: ConnectResult) {
+    private fun closeConnection(connection: ConnectResult) {
         closeConnection(connection.handle, connection.passport)
     }
 
-    protected open fun closeConnection(handle: HBCIHandler?, passport: HBCIPassport?) {
+    private fun closeConnection(handle: HBCIHandler?, passport: HBCIPassport?) {
         // Sicherstellen, dass sowohl Passport als auch Handle nach Beendigung geschlossen werden.
         try {
             handle?.close()
