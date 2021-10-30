@@ -1,14 +1,11 @@
 package net.codinux.banking.rest.domain.model
 
-import java.math.BigDecimal
-
 
 open class BankAccount(
     identifier: String,
     subAccountNumber: String?,
     iban: String?,
     val accountHolderName: String,
-    val balance: BigDecimal = BigDecimal.ZERO,
     val currency: String = "EUR",
     val type: BankAccountType = BankAccountType.CheckingAccount,
     val productName: String? = null,

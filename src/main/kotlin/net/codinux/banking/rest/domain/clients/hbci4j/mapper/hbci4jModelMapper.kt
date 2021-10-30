@@ -37,7 +37,6 @@ class hbci4jModelMapper {
                 account.subnumber,
                 iban,
                 accountHolderName,
-                BigDecimal.ZERO,
                 account.curr,
                 mapBankAccountType(account),
                 productName,
