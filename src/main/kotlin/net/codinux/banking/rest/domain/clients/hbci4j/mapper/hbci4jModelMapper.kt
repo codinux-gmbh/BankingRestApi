@@ -54,6 +54,7 @@ class hbci4jModelMapper {
         val type = account.acctype
 
         return when {
+            type == null -> mapBankAccountTypeByName(account)
             type.length == 1 -> BankAccountType.CheckingAccount
             type.startsWith("1") -> BankAccountType.SavingsAccount
             type.startsWith("2") -> BankAccountType.FixedTermDepositAccount
@@ -68,6 +69,38 @@ class hbci4jModelMapper {
         }
     }
 
+    private fun mapBankAccountTypeByName(account: Konto): BankAccountType {
+        account.subnumber?.let { name ->
+            // comdirect doesn't set account type field but names its bank accounts according to them like 'Girokonto', 'Tagesgeldkonto', ...
+            return when {
+                name.contains("Girokonto", true) -> BankAccountType.CheckingAccount
+                name.contains("Festgeld", true) -> BankAccountType.FixedTermDepositAccount
+                name.contains("Tagesgeld", true) -> BankAccountType.SavingsAccount // learnt something new today:  according to Wikipedia some direct banks offer a modern version of saving accounts as 'Tagesgeldkonto'
+                name.contains("Kreditkarte", true) -> BankAccountType.CreditCardAccount
+                else -> BankAccountType.Other
+            }
+        }
+
+        return BankAccountType.Other
+    }
+
+
+    /**
+     * When a password is created for the first time, [AbstractPinTanPassport.getAllowedTwostepMechanisms] may is not set yet -> extract user's TAN method codes
+     * from hbci4j specific TAN methods String.
+     */
+    fun mapTanMethods(passport: AbstractPinTanPassport, tanMethodsString: String): List<TanMethod> {
+        if (passport.allowedTwostepMechanisms.isNotEmpty()) {
+            return mapTanMethods(passport)
+        }
+
+        return tanMethodsString.split('|').mapNotNull { tanMethodString ->
+            val parts = tanMethodString.split(':')
+
+            if (parts.size > 1) mapTanMethod(passport, parts[0], parts[1])
+            else null
+        }
+    }
 
     fun mapTanMethods(passport: AbstractPinTanPassport): List<TanMethod> {
         return passport.allowedTwostepMechanisms.mapNotNull { mapTanMethod(passport, it) }
