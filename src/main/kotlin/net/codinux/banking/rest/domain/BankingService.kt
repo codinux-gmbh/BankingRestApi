@@ -1,11 +1,9 @@
 package net.codinux.banking.rest.domain
 
 import net.codinux.banking.rest.domain.clients.hbci4j.hbci4jBankingClient
-import net.codinux.banking.rest.domain.model.BankCredentials
-import net.codinux.banking.rest.domain.model.BankData
-import net.codinux.banking.rest.domain.model.IBankingClient
-import net.codinux.banking.rest.domain.model.Response
+import net.codinux.banking.rest.domain.model.*
 import net.dankito.banking.bankfinder.InMemoryBankFinder
+import java.util.*
 
 import javax.enterprise.context.ApplicationScoped
 
@@ -24,6 +22,37 @@ class BankingService {
     }
 
     return getClient(bank).getAccountData()
+  }
+
+
+  /**
+   * According to PSD2 for the account transactions of the last 90 days the two-factor authorization does not have to
+   * be applied. It depends on the bank if they request a second factor or not.
+   *
+   * So may this call succeeds without being asked for a TAN.
+   */
+  fun getAccountTransactionsOfLast90Days(config: GetAccountTransactionsConfig): Response<RetrievedAccountTransactions> {
+    config.fromDate = calculate90DaysAgo()
+
+    return getAccountTransactions(config)
+  }
+
+  fun getAccountTransactions(config: GetAccountTransactionsConfig): Response<RetrievedAccountTransactions> {
+    val (bank, errorMessage) = mapToBankData(config.credentials)
+
+    if (errorMessage != null) {
+      return Response(errorMessage)
+    }
+
+    return getClient(bank).getTransactions(bank, config)
+  }
+
+  private fun calculate90DaysAgo(): Date {
+    val calendar = Calendar.getInstance()
+    calendar.time = Date()
+    calendar.add(Calendar.DATE, -90)
+
+    return Date(calendar.time.time)
   }
 
 

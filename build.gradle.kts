@@ -21,6 +21,7 @@ java {
 
 
 val quarkusVersion: String by project
+val fints4jVersion = "1.0.0-Alpha-9"
 
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
@@ -33,7 +34,8 @@ dependencies {
     implementation("io.quarkus:quarkus-smallrye-health")
     implementation("io.quarkus:quarkus-arc")
 
-    implementation("net.dankito.banking:BankFinder-jvm:1.0.0-Alpha-9")
+    implementation("net.dankito.banking:fints4k-jvm6:$fints4jVersion")
+    implementation("net.dankito.banking:BankFinder-jvm:$fints4jVersion")
     implementation("com.github.hbci4j:hbci4j-core:3.1.55")
 
     testImplementation("io.quarkus:quarkus-junit5")

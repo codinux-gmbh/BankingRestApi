@@ -2,9 +2,7 @@ package net.codinux.banking.rest.domain.clients.hbci4j
 
 import net.codinux.banking.rest.domain.clients.hbci4j.mapper.hbci4jModelMapper
 import net.codinux.banking.rest.domain.clients.hbci4j.model.ConnectResult
-import net.codinux.banking.rest.domain.model.BankData
-import net.codinux.banking.rest.domain.model.IBankingClient
-import net.codinux.banking.rest.domain.model.Response
+import net.codinux.banking.rest.domain.model.*
 import net.dankito.utils.multiplatform.getInnerExceptionMessage
 import org.kapott.hbci.GV.HBCIJob
 import org.kapott.hbci.GV_Result.GVRKUms
@@ -18,6 +16,7 @@ import org.kapott.hbci.passport.HBCIPassport
 import org.kapott.hbci.status.HBCIExecStatus
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -28,6 +27,9 @@ open class hbci4jBankingClient(
 ) : IBankingClient {
 
     companion object {
+        // the date format is hard coded in HBCIUtils.string2DateISO()
+        val HbciLibDateFormat = SimpleDateFormat("yyyy-MM-dd")
+
         private val log = LoggerFactory.getLogger(hbci4jBankingClient::class.java)
     }
 
@@ -43,17 +45,104 @@ open class hbci4jBankingClient(
             connection.passport?.let { passport ->
                 val accounts = passport.accounts
                 if (accounts == null || accounts.size == 0) {
-                    log.error("Keine Konten ermittelbar")
-                    return Response("Keine Konten ermittelbar") // TODO: translate
+                    log.error("Could not get accounts for bank credentials {} {}: {}", bank.bankCode, bank.bankName, bank.loginName)
+                    return Response("Could not get accounts for this bank credentials")
                 }
 
-                this.bank.accounts = mapper.mapAccounts(bank, accounts, passport)
+                this.bank.accounts = mapper.mapAccounts(accounts, passport)
 
                 return Response(bank)
             }
         }
 
         return Response(connection.error?.getInnerExceptionMessage() ?: "Could not connect")
+    }
+
+
+    override fun getTransactions(bank: BankData, config: GetAccountTransactionsConfig): Response<RetrievedAccountTransactions> {
+        val connection = connect()
+        val account = config.account
+
+        connection.handle?.let { handle ->
+            try {
+                val (nullableBalanceJob, accountTransactionsJob, status) = executeJobsForGetAccountTransactions(handle, bank, config)
+
+                // Pruefen, ob die Kommunikation mit der Bank grundsaetzlich geklappt hat
+                if (!status.isOK) {
+                    log.error("Could not connect to bank ${bank.bankCode} $status: ${status.errorString}")
+                    return Response("Could not connect to bank ${bank.bankCode}: $status")
+                }
+
+                // Auswertung des Saldo-Abrufs.
+                var balance: BigDecimal? = null
+                if (config.alsoRetrieveBalance && nullableBalanceJob != null) {
+                    val balanceResult = nullableBalanceJob.jobResult as GVRSaldoReq
+                    if(balanceResult.isOK == false) {
+                        log.error("Could not fetch balance of bank account $account: $balanceResult", balanceResult.getJobStatus().exceptions)
+                        return Response("Could not fetch balance of bank account $account: $balanceResult")
+                    }
+
+                    balance = balanceResult.entries[0].ready.value.bigDecimalValue
+                }
+
+
+                // Das Ergebnis des Jobs koennen wir auf "GVRKUms" casten. Jobs des Typs "KUmsAll"
+                // liefern immer diesen Typ.
+                val result = accountTransactionsJob.jobResult as GVRKUms
+
+                // Pruefen, ob der Abruf der Umsaetze geklappt hat
+                if (result.isOK == false) {
+                    log.error("Could not get fetch account transactions of bank account $account: $result", result.getJobStatus().exceptions)
+                    return Response("Could not fetch account transactions of bank account $account: $result")
+                }
+
+                return Response(RetrievedAccountTransactions(mapper.mapTransactions(result), balance))
+            }
+            catch(e: Exception) {
+                log.error("Could not get account transactions for bank ${bank.bankCode}", e)
+                return Response(e.getInnerExceptionMessage())
+            }
+            finally {
+                closeConnection(connection)
+            }
+        }
+
+        closeConnection(connection)
+
+        return Response(connection.error?.getInnerExceptionMessage() ?: "Could not connect")
+    }
+
+    protected open fun executeJobsForGetAccountTransactions(handle: HBCIHandler, bank: BankData, config: GetAccountTransactionsConfig): Triple<HBCIJob?, HBCIJob, HBCIExecStatus> {
+        val konto = mapper.mapToKonto(bank, config.account)
+
+        // 1. Auftrag fuer das Abrufen des Saldos erzeugen
+        var balanceJob: HBCIJob? = null
+        if (config.alsoRetrieveBalance) {
+            val createdBalanceJob = handle.newJob("SaldoReq")
+            createdBalanceJob.setParam("my", konto) // festlegen, welches Konto abgefragt werden soll.
+            createdBalanceJob.addToQueue() // Zur Liste der auszufuehrenden Auftraege hinzufuegen
+
+            balanceJob = createdBalanceJob
+        }
+        // 2. Auftrag fuer das Abrufen der Umsaetze erzeugen
+        val accountTransactionsJob = handle.newJob("KUmsAll")
+        accountTransactionsJob.setParam("my", konto) // festlegen, welches Konto abgefragt werden soll.
+        // evtl. Datum setzen, ab welchem die Auszüge geholt werden sollen
+        config.fromDate?.let {
+            accountTransactionsJob.setParam("startdate", HbciLibDateFormat.format(it))
+        }
+        config.toDate?.let {
+            accountTransactionsJob.setParam("enddate", HbciLibDateFormat.format(it))
+        }
+        accountTransactionsJob.addToQueue() // Zur Liste der auszufuehrenden Auftraege hinzufuegen
+
+        // Hier koennen jetzt noch weitere Auftraege fuer diesen Bankzugang hinzugefuegt
+        // werden. Z.Bsp. Ueberweisungen.
+
+        // Alle Auftraege aus der Liste ausfuehren.
+        val status = handle.execute()
+
+        return Triple(balanceJob, accountTransactionsJob, status)
     }
 
 
