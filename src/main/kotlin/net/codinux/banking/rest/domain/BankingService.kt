@@ -1,6 +1,7 @@
 package net.codinux.banking.rest.domain
 
 import net.codinux.banking.rest.domain.clients.fints4k.fints4kBankingClient
+import net.codinux.banking.rest.domain.clients.hbci4j.hbci4jBankingClient
 import net.codinux.banking.rest.domain.model.*
 import net.codinux.banking.rest.domain.model.tan.EnterTanResult
 import net.codinux.banking.rest.domain.model.tan.TanChallenge
@@ -85,8 +86,6 @@ class BankingService {
 
   private fun getClient(bank: BankData, callback: BankingClientCallback): IBankingClient {
     return fints4kBankingClient(bank, callback)
-
-//    return hbci4jBankingClient(bank, callback)
   }
 
 
@@ -106,10 +105,28 @@ class BankingService {
     thread {
       val client = getClient(bank, callback)
 
-      responseHolder.setResponse(executeRequest(client))
+      var response = executeRequest(client)
+
+      if (response.error != null) { // in error case check if for this client a fallback exists that may can handle messages for this bank (like hbci4j for fints4k)
+        hasFallbackClient(client, response, bank, callback)?.let { fallbackClient ->
+          response = executeRequest(fallbackClient)
+        }
+      }
+
+      responseHolder.setResponse(response)
     }
 
     return responseHolder.waitForResponse()
+  }
+
+  private fun <T> hasFallbackClient(client: IBankingClient, originalClientResponse: Response<T>, bank: BankData, callback: BankingClientCallback): IBankingClient? {
+    if (client is fints4kBankingClient) { // fints4k is the first choose for banks supporting FinTS; if fints4k didn't work, we can try hbci4j
+      if (originalClientResponse.error != null && originalClientResponse.errorType == null) { // but only if an error occurred but it's not an know error like wrong credentials or we were told to abort if TAN is required
+        return hbci4jBankingClient(bank, callback)
+      }
+    }
+
+    return null
   }
 
   private fun <T> handleEnterTan(tanChallenge: TanChallenge, responseHolder: AsyncResponseHolder<T>): EnterTanResult {
