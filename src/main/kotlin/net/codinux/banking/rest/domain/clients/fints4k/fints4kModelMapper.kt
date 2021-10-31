@@ -4,9 +4,7 @@ import net.codinux.banking.rest.domain.model.*
 import net.codinux.banking.rest.domain.model.AccountTransaction
 import net.codinux.banking.rest.domain.model.BankData
 import net.dankito.banking.fints.messages.datenelemente.abgeleiteteformate.Laenderkennzeichen
-import net.dankito.banking.fints.messages.datenelemente.implementierte.tan.AllowedTanFormat
-import net.dankito.banking.fints.messages.datenelemente.implementierte.tan.TanMedium
-import net.dankito.banking.fints.messages.datenelemente.implementierte.tan.TanMediumStatus
+import net.dankito.banking.fints.messages.datenelemente.implementierte.tan.*
 import net.dankito.banking.fints.model.*
 import net.dankito.banking.fints.response.client.FinTsClientResponse
 import net.dankito.banking.fints.response.segments.AccountType
@@ -124,8 +122,15 @@ class fints4kModelMapper {
     return EnterTanResult.userDidNotEnterTan()
   }
 
-  private fun map(tanMedium: TanMedium): net.codinux.banking.rest.domain.model.tan.TanMedium {
-    return net.codinux.banking.rest.domain.model.tan.TanMedium(tanMedium.mediumName ?: "", map(tanMedium.status))
+  private fun map(medium: TanMedium): net.codinux.banking.rest.domain.model.tan.TanMedium {
+    val name = medium.mediumName ?: "" // should always be set, just to be on the safe side
+    val status = map(medium.status)
+
+    return when (medium) {
+      is MobilePhoneTanMedium -> net.codinux.banking.rest.domain.model.tan.MobilePhoneTanMedium(name, status, medium.phoneNumber ?: medium.concealedPhoneNumber)
+      is TanGeneratorTanMedium -> net.codinux.banking.rest.domain.model.tan.TanGeneratorTanMedium(name, status, medium.cardNumber)
+      else -> net.codinux.banking.rest.domain.model.tan.TanMedium(name, status)
+    }
   }
 
   private fun map(status: TanMediumStatus): net.codinux.banking.rest.domain.model.tan.TanMediumStatus {
