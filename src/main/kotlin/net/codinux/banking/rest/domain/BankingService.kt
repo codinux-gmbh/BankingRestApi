@@ -1,5 +1,6 @@
 package net.codinux.banking.rest.domain
 
+import net.codinux.banking.rest.domain.clients.fints4k.fints4kBankingClient
 import net.codinux.banking.rest.domain.clients.hbci4j.hbci4jBankingClient
 import net.codinux.banking.rest.domain.model.*
 import net.codinux.banking.rest.domain.model.tan.EnterTanResult
@@ -83,7 +84,9 @@ class BankingService {
 
 
   private fun getClient(bank: BankData, callback: BankingClientCallback): IBankingClient {
-    return hbci4jBankingClient(bank, callback)
+    return fints4kBankingClient(bank, callback)
+
+//    return hbci4jBankingClient(bank, callback)
   }
 
 
