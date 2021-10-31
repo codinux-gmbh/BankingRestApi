@@ -33,6 +33,7 @@ dependencies {
     implementation("io.quarkus:quarkus-resteasy-jackson")
     implementation("io.quarkus:quarkus-smallrye-health")
     implementation("io.quarkus:quarkus-arc")
+    implementation("io.quarkus:quarkus-smallrye-openapi")
 
     implementation("net.dankito.banking:fints4k-jvm6:$fints4jVersion")
     implementation("net.dankito.banking:BankFinder-jvm:$fints4jVersion")
