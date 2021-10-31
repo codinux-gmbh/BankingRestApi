@@ -43,7 +43,7 @@ class fints4kBankingClient(
     val responseHolder = AsyncResponseHolder<RetrievedAccountTransactions>()
 
     client.getTransactionsAsync(mapper.map(bank, config)) { response ->
-      if (response.retrievedData.isEmpty()) {
+      if (response.retrievedData.isEmpty() || response.retrievedData.first().successfullyRetrievedData == false) {
         responseHolder.setResponse(mapper.mapError(response))
       } else {
         responseHolder.setResponse(Response(mapper.map(response.retrievedData.first())))
