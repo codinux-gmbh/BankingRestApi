@@ -246,11 +246,13 @@ class hbci4jBankingClient(
     private fun closeConnection(handle: HBCIHandler?, passport: HBCIPassport?) {
         // Sicherstellen, dass sowohl Passport als auch Handle nach Beendigung geschlossen werden.
         try {
-            handle?.close()
+            if (handle != null || passport != null) { // if both (or only passport?) is null then HBCIUtils.doneThread() throws an exception
+                handle?.close()
 
-            passport?.close()
+                passport?.close()
 
-            HBCIUtils.doneThread() // i hate static variables, here's one of the reasons why: Old callbacks and therefore credentials get stored in static variables and therefor always the first entered credentials have been used
+                HBCIUtils.doneThread() // i hate static variables, here's one of the reasons why: Old callbacks and therefore credentials get stored in static variables and therefore always the first entered credentials have been used
+            }
         } catch(e: Exception) { log.error("Could not close connection", e) }
     }
 
