@@ -6,9 +6,10 @@ import java.text.DateFormat
 import java.util.*
 
 
-@JsonInclude(JsonInclude.Include.NON_EMPTY)
+@JsonInclude(JsonInclude.Include.NON_DEFAULT)
 open class AccountTransaction(
     val amount: BigDecimal,
+    @JsonInclude // don't know why Jackson removes this value during serialization
     val currency: String,
     @JsonInclude // unparsedReference may be an empty string (currently known only Postbank)
     val unparsedReference: String,
