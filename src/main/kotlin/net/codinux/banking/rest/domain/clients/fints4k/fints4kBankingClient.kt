@@ -29,7 +29,11 @@ class fints4kBankingClient(
     val responseHolder = AsyncResponseHolder<BankData>()
 
     client.addAccountAsync(AddAccountParameter(mappedBank, false)) { response ->
-      responseHolder.setResponse(Response(mapper.map(bank, response.bank), mapper.mapErrors(response), null))
+      if (response.bank.accounts.isEmpty()) { // retrieving accounts failed means an error occurred
+        responseHolder.setResponse(mapper.mapError(response))
+      } else {
+        responseHolder.setResponse(Response(mapper.map(bank, response.bank)))
+      }
     }
 
     return responseHolder.waitForResponse()
@@ -39,7 +43,11 @@ class fints4kBankingClient(
     val responseHolder = AsyncResponseHolder<RetrievedAccountTransactions>()
 
     client.getTransactionsAsync(mapper.map(bank, config)) { response ->
-      responseHolder.setResponse(Response(mapper.map(response), mapper.mapErrors(response), null))
+      if (response.retrievedData.isEmpty()) {
+        responseHolder.setResponse(mapper.mapError(response))
+      } else {
+        responseHolder.setResponse(Response(mapper.map(response.retrievedData.first())))
+      }
     }
 
     return responseHolder.waitForResponse()

@@ -44,11 +44,7 @@ class fints4kModelMapper {
   }
 
 
-  fun map(bank: BankData, fintsBank: net.dankito.banking.fints.model.BankData): BankData? {
-    if (fintsBank.accounts.isEmpty()) { // retrieving accounts failed -> signal error by returning null
-      return null
-    }
-
+  fun map(bank: BankData, fintsBank: net.dankito.banking.fints.model.BankData): BankData {
     bank.customerName = fintsBank.customerName
     bank.userId = fintsBank.userId
     bank.bankName = fintsBank.bankName
@@ -147,12 +143,9 @@ class fints4kModelMapper {
     return GetTransactionsParameter(account, config.alsoRetrieveBalance, config.fromDate?.toDate(), config.toDate?.toDate(), abortIfTanIsRequired = config.abortIfTanIsRequired)
   }
 
-  fun map(response: GetTransactionsResponse): RetrievedAccountTransactions? {
-    if (response.retrievedData.isNotEmpty()) {
-      return map(response.retrievedData.first())
-    }
 
-    return null
+  fun <T> mapError(response: FinTsClientResponse): Response<T> {
+    return Response(mapErrors(response) ?: "")
   }
 
   fun mapErrors(response: FinTsClientResponse): String? {
