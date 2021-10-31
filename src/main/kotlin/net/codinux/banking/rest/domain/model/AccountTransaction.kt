@@ -10,6 +10,7 @@ import java.util.*
 open class AccountTransaction(
     val amount: BigDecimal,
     val currency: String,
+    @JsonInclude // unparsedReference may be an empty string (currently known only Postbank)
     val unparsedReference: String,
     val bookingDate: Date,
     val otherPartyName: String?,
