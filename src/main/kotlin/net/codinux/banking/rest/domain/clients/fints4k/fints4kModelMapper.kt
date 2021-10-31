@@ -9,7 +9,6 @@ import net.dankito.banking.fints.messages.datenelemente.implementierte.tan.TanMe
 import net.dankito.banking.fints.messages.datenelemente.implementierte.tan.TanMediumStatus
 import net.dankito.banking.fints.model.*
 import net.dankito.banking.fints.response.client.FinTsClientResponse
-import net.dankito.banking.fints.response.client.GetTransactionsResponse
 import net.dankito.banking.fints.response.segments.AccountType
 import net.dankito.utils.multiplatform.toDate
 
@@ -145,12 +144,22 @@ class fints4kModelMapper {
 
 
   fun <T> mapError(response: FinTsClientResponse): Response<T> {
-    return Response(mapErrors(response) ?: "")
+    return Response(mapErrors(response) ?: "", mapErrorType(response))
   }
 
   fun mapErrors(response: FinTsClientResponse): String? {
     return response.errorMessage ?:
     if (response.errorsToShowToUser.isEmpty()) null else response.errorsToShowToUser.joinToString("\n") // TODO: find a better way to choose which of these error messages to show
+  }
+
+  private fun mapErrorType(response: FinTsClientResponse): ErrorType? {
+    return when {
+      response.wrongCredentialsEntered -> ErrorType.WrongCredentials
+      response.tanRequiredButWeWereToldToAbortIfSo -> ErrorType.TanRequiredButConfiguredToAbortThen
+      response.userCancelledAction -> ErrorType.UserCancelledAction
+      // TODO: detect if it's an internal error
+      else -> null
+    }
   }
 
 }

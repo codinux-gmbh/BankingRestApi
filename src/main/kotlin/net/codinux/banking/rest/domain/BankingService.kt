@@ -1,7 +1,6 @@
 package net.codinux.banking.rest.domain
 
 import net.codinux.banking.rest.domain.clients.fints4k.fints4kBankingClient
-import net.codinux.banking.rest.domain.clients.hbci4j.hbci4jBankingClient
 import net.codinux.banking.rest.domain.model.*
 import net.codinux.banking.rest.domain.model.tan.EnterTanResult
 import net.codinux.banking.rest.domain.model.tan.TanChallenge
@@ -27,13 +26,13 @@ class BankingService {
 
 
   fun getAccountData(credentials: BankCredentials): Response<BankData> {
-    val (bank, errorMessage) = mapToBankData(credentials)
+    val findBankResult = findBank(credentials)
 
-    if (errorMessage != null) {
-      return Response(errorMessage)
+    if (findBankResult.foundBank == null) {
+      return Response(findBankResult.error!!, findBankResult.errorType)
     }
 
-    return executeRequestThatPotentiallyRequiresTan(bank) { client -> client.getAccountData() }
+    return executeRequestThatPotentiallyRequiresTan(findBankResult.foundBank) { client -> client.getAccountData() }
   }
 
 
@@ -50,12 +49,13 @@ class BankingService {
   }
 
   fun getAccountTransactions(config: GetAccountTransactionsConfig): Response<RetrievedAccountTransactions> {
-    val (bank, errorMessage) = mapToBankData(config.credentials)
+    val findBankResult = findBank(config.credentials)
 
-    if (errorMessage != null) {
-      return Response(errorMessage)
+    if (findBankResult.foundBank == null) {
+      return Response(findBankResult.error!!, findBankResult.errorType)
     }
 
+    val bank = findBankResult.foundBank
     return executeRequestThatPotentiallyRequiresTan(bank) { client -> client.getTransactions(bank, config) }
   }
 
@@ -128,21 +128,21 @@ class BankingService {
   }
 
 
-  private fun mapToBankData(credentials: BankCredentials): Pair<BankData, String?> {
+  private fun findBank(credentials: BankCredentials): FindBankResult {
     val bankSearchResult = bankFinder.findBankByBankCode(credentials.bankCode)
-    val fintsServerAddress = bankSearchResult.firstOrNull { it.pinTanAddress != null }?.pinTanAddress
-    val potentialBankInfo = bankSearchResult.firstOrNull()
+    val potentialBankInfo = bankSearchResult.firstOrNull { it.pinTanAddress != null } ?: bankSearchResult.firstOrNull()
 
-    val bank = BankData(credentials.bankCode, credentials.loginName, credentials.password, fintsServerAddress ?: "",
-      potentialBankInfo?.name ?: "", potentialBankInfo?.bic ?: "")
-
-    if (fintsServerAddress == null) {
-      val errorMessage = if (bankSearchResult.isEmpty()) "No bank found for bank code '${credentials.bankCode}'" else "Bank '${bankSearchResult.firstOrNull()?.name} does not support FinTS 3.0"
-
-      return Pair(bank, errorMessage)
+    if (potentialBankInfo == null) {
+      return FindBankResult(null, "No bank found for bank code '${credentials.bankCode}'", ErrorType.NoBankFoundForBankCode)
+    } else if (potentialBankInfo.pinTanAddress == null) {
+      return FindBankResult(null, "Bank '${potentialBankInfo.name} does not support FinTS 3.0", ErrorType.BankDoesNotSupportFinTs3)
     }
 
-    return Pair(bank, null)
+
+    val bank = BankData(credentials.bankCode, credentials.loginName, credentials.password, potentialBankInfo.pinTanAddress ?: "",
+      potentialBankInfo.name, potentialBankInfo.bic)
+
+    return FindBankResult(bank, null, null)
   }
 
 }
