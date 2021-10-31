@@ -6,7 +6,7 @@ open class TanGeneratorTanMedium(
     status: TanMediumStatus,
     val cardNumber: String
 
-) : TanMedium(displayName, status) {
+) : TanMedium(TanMediumType.TanGenerator, displayName, status) {
 
     override fun toString(): String {
         return "$displayName $status"

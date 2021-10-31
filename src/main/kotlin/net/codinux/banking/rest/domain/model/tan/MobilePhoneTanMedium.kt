@@ -6,7 +6,7 @@ open class MobilePhoneTanMedium(
     status: TanMediumStatus,
     val phoneNumber: String?
 
-) : TanMedium(displayName, status) {
+) : TanMedium(TanMediumType.MobilePhone, displayName, status) {
 
     override fun toString(): String {
         return "$displayName $status"
