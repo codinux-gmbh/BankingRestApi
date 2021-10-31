@@ -10,6 +10,7 @@ import net.dankito.banking.bankfinder.InMemoryBankFinder
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 import javax.enterprise.context.ApplicationScoped
@@ -23,6 +24,8 @@ class BankingService {
 
   // TODO: create clean up job for timed out TAN requests
   private val tanRequests = ConcurrentHashMap<String, EnterTanContext>()
+
+  private val callCount = AtomicLong(0)
 
 
 
@@ -102,7 +105,7 @@ class BankingService {
     // there are two reasons why we create hbci4j client and execute request on an extra thread:
     // - hbci4j sets many variables on current thread, so we shouldn't re-use threads as when re-entering thread after TAN has been entered the thread specific variables may already have been set to another client
     // - if a TAN is required, this is signalled via a callback which is executed on the same thread. So we would wait here forever when callback gets fired
-    thread {
+    thread(name = "${bank.bankCode}_${bank.loginName}_${callCount.incrementAndGet()}") {
       val client = getClient(bank, callback)
 
       var response = executeRequest(client)
