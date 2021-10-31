@@ -4,6 +4,7 @@ import net.codinux.banking.rest.domain.clients.hbci4j.mapper.hbci4jModelMapper
 import net.codinux.banking.rest.domain.model.BankData
 import net.codinux.banking.rest.domain.model.BankingClientCallback
 import net.codinux.banking.rest.domain.model.tan.*
+import net.codinux.banking.rest.domain.util.TanMethodSelector
 import org.kapott.hbci.callback.AbstractHBCICallback
 import org.kapott.hbci.callback.HBCICallback
 import org.kapott.hbci.manager.HBCIUtils
@@ -27,6 +28,9 @@ class HbciCallback(
     companion object {
         private val log = LoggerFactory.getLogger(HbciCallback::class.java)
     }
+
+
+    private val tanMethodSelector = TanMethodSelector()
 
 
     override fun callback(passport: HBCIPassport, reason: Int, msg: String, datatype: Int, retData: StringBuffer) {
@@ -173,10 +177,7 @@ class HbciCallback(
 
         if (supportedTanMethods.isNotEmpty()) {
             // select any method, user then can select her preferred one in EnterTanDialog; try not to select 'chipTAN manuell'
-            bank.selectedTanMethod = supportedTanMethods.firstOrNull { it.type == TanMethodType.AppTan }
-                ?: supportedTanMethods.firstOrNull { it.type == TanMethodType.SmsTan }
-                ?: supportedTanMethods.firstOrNull { it.displayName.contains("manuell", true) }
-                ?: supportedTanMethods.firstOrNull()
+            bank.selectedTanMethod = tanMethodSelector.selectNonVisual(supportedTanMethods)
 
             returnData.replace(0, returnData.length, bank.selectedTanMethod?.bankInternalMethodCode)
         }
