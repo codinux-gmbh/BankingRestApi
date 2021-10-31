@@ -1,10 +1,12 @@
 package net.codinux.banking.rest.domain.model
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import java.math.BigDecimal
 import java.text.DateFormat
 import java.util.*
 
 
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
 open class AccountTransaction(
     val amount: BigDecimal,
     val currency: String,
