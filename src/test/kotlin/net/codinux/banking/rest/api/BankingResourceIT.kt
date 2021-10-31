@@ -89,7 +89,7 @@ class BankingResourceIT {
             .contentType(ContentType.JSON)
             .body(body)
           .`when`()
-            .post("/banking/v1/" + endpoint)
+            .post("/banking/v1-beta/" + endpoint)
   }
 
   private fun <T> postAndValidateSuccessful(endpoint: String, body: Any, responseClass: Class<T>): T {

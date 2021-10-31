@@ -8,7 +8,7 @@ import javax.ws.rs.*
 import javax.ws.rs.core.MediaType
 
 
-@Path("/banking/v1")
+@Path("/banking/v1-beta")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 class BankingResource {
