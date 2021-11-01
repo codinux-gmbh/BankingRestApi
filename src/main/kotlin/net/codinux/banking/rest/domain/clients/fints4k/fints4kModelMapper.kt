@@ -149,12 +149,7 @@ class fints4kModelMapper {
 
 
   fun <T> mapError(response: FinTsClientResponse): Response<T> {
-    return Response(mapErrors(response) ?: "", mapErrorType(response))
-  }
-
-  fun mapErrors(response: FinTsClientResponse): String? {
-    return response.errorMessage ?:
-    if (response.errorsToShowToUser.isEmpty()) null else response.errorsToShowToUser.joinToString("\n") // TODO: find a better way to choose which of these error messages to show
+    return Response(response.errorMessage ?: "", mapErrorType(response))
   }
 
   private fun mapErrorType(response: FinTsClientResponse): ErrorType? {
@@ -162,7 +157,8 @@ class fints4kModelMapper {
       response.wrongCredentialsEntered -> ErrorType.WrongCredentials
       response.tanRequiredButWeWereToldToAbortIfSo -> ErrorType.TanRequiredButConfiguredToAbortThen
       response.userCancelledAction -> ErrorType.UserCancelledAction
-      // TODO: detect if it's an internal error
+      response.didBankReturnError -> ErrorType.ErrorMessageFromBank
+      response.internalError != null -> ErrorType.InternalError
       else -> null
     }
   }

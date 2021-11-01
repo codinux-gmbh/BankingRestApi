@@ -13,6 +13,8 @@ enum class ErrorType {
 
   UserCancelledAction,
 
+  ErrorMessageFromBank,
+
   InternalError
 
 }
