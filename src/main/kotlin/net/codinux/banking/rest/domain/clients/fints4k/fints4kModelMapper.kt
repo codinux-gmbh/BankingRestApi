@@ -49,9 +49,12 @@ class fints4kModelMapper {
     bank.finTsServerAddress = fintsBank.finTs3ServerAddress
 
     bank.accounts = fintsBank.accounts.map { map(it) }
+
     bank.supportedTanMethods = fintsBank.tanMethodsAvailableForUser.map { map(it) }
     bank.selectedTanMethod = bank.supportedTanMethods.firstOrNull { it.bankInternalMethodCode == fintsBank.selectedTanMethod.securityFunction.code }
+
     bank.tanMedia = fintsBank.tanMedia.map { map(it) }
+    bank.selectedTanMedium = bank.tanMedia.firstOrNull { it.displayName == fintsBank.selectedTanMedium?.mediumName }
 
     return bank
   }

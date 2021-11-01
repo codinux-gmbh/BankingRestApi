@@ -4,6 +4,7 @@ import net.codinux.banking.rest.domain.model.tan.TanMethod
 import net.codinux.banking.rest.domain.model.tan.TanMethodType
 
 
+// TODO: use TanMethodSelector from fints4k
 class TanMethodSelector {
 
   fun selectNonVisual(supportedTanMethods: List<TanMethod>): TanMethod? {

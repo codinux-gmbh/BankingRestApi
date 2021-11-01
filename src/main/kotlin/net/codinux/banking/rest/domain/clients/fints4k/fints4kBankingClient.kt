@@ -2,9 +2,9 @@ package net.codinux.banking.rest.domain.clients.fints4k
 
 import net.codinux.banking.rest.domain.model.*
 import net.codinux.banking.rest.domain.model.BankData
-import net.codinux.banking.rest.domain.util.TanMethodSelector
 import net.dankito.banking.fints.callback.SimpleFinTsClientCallback
 import net.dankito.banking.fints.model.*
+import net.dankito.banking.fints.util.TanMethodSelector
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicReference
 
@@ -69,9 +69,7 @@ class fints4kBankingClient(
   }
 
   private fun selectTanMethod(supportedTanMethods: List<TanMethod>, suggestedTanMethod: TanMethod?): TanMethod? {
-    val selected = tanMethodSelector.selectNonVisual(mapper.map(supportedTanMethods))
-
-    return selected?.let { supportedTanMethods.firstOrNull { it.securityFunction.code == selected.bankInternalMethodCode } } ?: suggestedTanMethod
+    return tanMethodSelector.selectNonVisual(supportedTanMethods) ?: suggestedTanMethod
   }
 
 }
