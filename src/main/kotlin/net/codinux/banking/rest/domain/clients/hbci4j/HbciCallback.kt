@@ -190,7 +190,8 @@ class HbciCallback(
             bank.tanMedia = tanMedia
 
             if (tanMedia.isNotEmpty()) {
-                returnData.replace(0, returnData.length, tanMedia[0].displayName)
+                bank.selectedTanMedium = bank.tanMedia.firstOrNull()
+                returnData.replace(0, returnData.length, bank.selectedTanMedium?.displayName)
             }
         }
     }

@@ -22,6 +22,7 @@ class BankData(
     var supportedTanMethods: List<TanMethod> = listOf()
     var selectedTanMethod: TanMethod? = null
     var tanMedia: List<TanMedium> = listOf()
+    var selectedTanMedium: TanMedium? = null
 
 
     override fun toString(): String {

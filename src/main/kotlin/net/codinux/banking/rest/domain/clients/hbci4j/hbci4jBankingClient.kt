@@ -224,6 +224,7 @@ class hbci4jBankingClient(
 
 
                 mapper.mapTanMedia(pinTanPassport)?.let { bank.tanMedia = it }
+                // TODO: how to get selectedTanMedium? This is not possible, isn't it?
             }
         }
     }
