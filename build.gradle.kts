@@ -55,3 +55,33 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions.jvmTarget = JavaVersion.VERSION_11.toString()
     kotlinOptions.javaParameters = true
 }
+
+
+
+/*      configures publishing to Maven Central / local      */
+
+val commonScriptsFile = File(File(project.gradle.gradleUserHomeDir, "scripts"), "commonScripts.gradle")
+if (commonScriptsFile.exists()) {
+    apply(from = commonScriptsFile)
+}
+
+
+ext["artifactName"] = "banking-rest-api"
+
+ext["useNewSonatypeRepo"] = true
+ext["packageGroup"] = "net.codinux"
+
+ext["sourceCodeRepositoryBaseUrl"] = "https://github.com/codinux-gmbh/BankingRestApi"
+
+ext["developerId"] = "codinux"
+ext["developerName"] = "codinux GmbH & Co. KG"
+ext["developerMail"] = "git@codinux.net"
+
+ext["licenseName"] = "<not_specified_yet>"
+ext["licenseUrl"] = "<not_specified_yet>"
+
+
+tasks.withType<GenerateModuleMetadata> {
+    // to suppress error: Variant 'runtimeElements' contains a dependency on enforced platform 'io.quarkus.platform:quarkus-bom'
+    suppressedValidationErrors.add("enforced-platform")
+}
