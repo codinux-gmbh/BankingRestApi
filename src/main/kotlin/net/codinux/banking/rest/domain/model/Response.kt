@@ -3,7 +3,7 @@ package net.codinux.banking.rest.domain.model
 import net.codinux.banking.rest.domain.model.tan.TanRequired
 
 
-class Response<T> private constructor(
+class Response<T>(
   val type: ResponseType,
   val data: T?,
   val error: String?,
