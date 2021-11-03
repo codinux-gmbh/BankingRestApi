@@ -37,12 +37,12 @@ open class AccountTransaction(
     val textKeySupplement: String?,
 
     val currencyType: String?,
-    val bookingKey: String,
-    val referenceForTheAccountOwner: String,
+    val bookingKey: String?,
+    val referenceForTheAccountOwner: String?,
     val referenceOfTheAccountServicingInstitution: String?,
     val supplementaryDetails: String?,
 
-    val transactionReferenceNumber: String,
+    val transactionReferenceNumber: String?,
     val relatedReferenceNumber: String?
 ) {
 
@@ -58,7 +58,7 @@ open class AccountTransaction(
                 bookingText: String?, valueDate: Date)
             : this(amount, currency, unparsedReference, bookingDate,
         otherPartyName, otherPartyBankCode, otherPartyAccountId, bookingText, valueDate,
-        0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "", "", null, null, "", null)
+        0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)
 
 
 
