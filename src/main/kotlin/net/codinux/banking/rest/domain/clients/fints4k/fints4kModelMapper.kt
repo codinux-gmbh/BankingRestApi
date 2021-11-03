@@ -60,8 +60,8 @@ class fints4kModelMapper {
   }
 
   private fun map(account: AccountData): BankAccount {
-    return BankAccount(account.accountIdentifier, account.subAccountAttribute, account.iban, account.accountHolderName, account.currency ?: "EUR",
-      map(account.accountType), account.productName, account.accountLimit,
+    return BankAccount(account.accountIdentifier, account.subAccountAttribute, account.iban, account.accountHolderName,
+      map(account.accountType), account.productName, account.currency ?: "EUR", account.accountLimit,
       account.supportsRetrievingAccountTransactions, account.supportsRetrievingBalance, account.supportsTransferringMoney, account.supportsRealTimeTransfer)
   }
 
