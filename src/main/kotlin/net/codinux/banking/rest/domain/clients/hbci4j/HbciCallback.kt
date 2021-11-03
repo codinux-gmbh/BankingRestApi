@@ -170,10 +170,10 @@ class HbciCallback(
     private fun selectTanMethod(passport: HBCIPassport, returnData: StringBuffer) {
         if (/* bank.supportedTanMethods.isEmpty() && */ passport is AbstractPinTanPassport) {
             val supportedTanMethodsString = returnData.toString()
-            bank.supportedTanMethods = mapper.mapTanMethods(passport, supportedTanMethodsString)
+            bank.tanMethods = mapper.mapTanMethods(passport, supportedTanMethodsString)
         }
 
-        val supportedTanMethods = bank.supportedTanMethods
+        val supportedTanMethods = bank.tanMethods
 
         if (supportedTanMethods.isNotEmpty()) {
             // select any method, user then can select her preferred one in EnterTanDialog; try not to select 'chipTAN manuell'

@@ -215,11 +215,11 @@ class hbci4jBankingClient(
         // when passport has been created before, allowedTwostepMechanisms is already set (and HbciCallback's selectTanMethod() will not be called therefore we can't do it there)
         (passport as? AbstractPinTanPassport)?.let { pinTanPassport ->
             if (pinTanPassport.allowedTwostepMechanisms.isNotEmpty()) {
-                bank.supportedTanMethods = mapper.mapTanMethods(pinTanPassport)
+                bank.tanMethods = mapper.mapTanMethods(pinTanPassport)
 
                 if (bank.selectedTanMethod != null) {
                     val currentTanMethodCode = pinTanPassport.getCurrentTANMethod(false)
-                    bank.selectedTanMethod = bank.supportedTanMethods.firstOrNull { it.bankInternalMethodCode == currentTanMethodCode }
+                    bank.selectedTanMethod = bank.tanMethods.firstOrNull { it.bankInternalMethodCode == currentTanMethodCode }
                 }
 
 

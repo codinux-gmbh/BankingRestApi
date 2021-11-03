@@ -41,7 +41,7 @@ class BankingResourceIT {
     assertThat(bankData.bankCode).isEqualTo(bankCode)
     assertThat(bankData.loginName).isEqualTo(loginName)
     assertThat(bankData.accounts).isNotEmpty
-    assertThat(bankData.supportedTanMethods).isNotEmpty
+    assertThat(bankData.tanMethods).isNotEmpty
   }
 
   /**

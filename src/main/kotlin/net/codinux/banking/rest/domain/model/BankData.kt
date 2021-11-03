@@ -19,7 +19,7 @@ class BankData(
 
     var accounts: List<BankAccount> = listOf()
 
-    var supportedTanMethods: List<TanMethod> = listOf()
+    var tanMethods: List<TanMethod> = listOf()
     var selectedTanMethod: TanMethod? = null
     var tanMedia: List<TanMedium> = listOf()
     var selectedTanMedium: TanMedium? = null
