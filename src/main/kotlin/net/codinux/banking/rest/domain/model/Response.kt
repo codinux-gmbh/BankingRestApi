@@ -17,4 +17,7 @@ class Response<T>(
 
   constructor(tanRequired: TanRequired) : this(ResponseType.TanRequired, null, null, null, tanRequired)
 
+
+  val successful: Boolean = type == ResponseType.Success
+
 }
