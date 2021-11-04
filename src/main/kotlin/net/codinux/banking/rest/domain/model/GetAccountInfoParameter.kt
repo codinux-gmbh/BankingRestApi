@@ -1,7 +1,7 @@
 package net.codinux.banking.rest.domain.model
 
 
-open class GetAccountInfoParameter(
+open class GetAccountInfoParameter @JvmOverloads constructor(
   bankCode: String,
   loginName: String,
   password: String,
@@ -15,4 +15,9 @@ open class GetAccountInfoParameter(
    */
   open val tryToRetrieveAccountTransactionOfLast90DaysWithoutTan: Boolean = false,
 ) : BankCredentials(bankCode, loginName, password) {
+
+  @JvmOverloads
+  constructor(credentials: BankCredentials, tryToRetrieveAccountTransactionOfLast90DaysWithoutTan: Boolean = false)
+    : this(credentials.bankCode, credentials.loginName, credentials.password, tryToRetrieveAccountTransactionOfLast90DaysWithoutTan)
+
 }
