@@ -25,7 +25,7 @@ class fints4kBankingClient(
   private val tanMethodSelector = TanMethodSelector()
 
 
-  override fun getAccountData(): Response<BankData> {
+  override fun getAccountInfo(): Response<BankData> {
     val responseHolder = AsyncResponseHolder<BankData>()
 
     client.addAccountAsync(AddAccountParameter(mappedBank, false)) { response ->
@@ -39,10 +39,10 @@ class fints4kBankingClient(
     return responseHolder.waitForResponse()
   }
 
-  override fun getTransactions(bank: BankData, config: GetAccountTransactionsConfig): Response<RetrievedAccountTransactions> {
-    val responseHolder = AsyncResponseHolder<RetrievedAccountTransactions>()
+  override fun getTransactions(bank: BankData, param: GetAccountDataParameter): Response<RetrievedTransactionsWithAccount> {
+    val responseHolder = AsyncResponseHolder<RetrievedTransactionsWithAccount>()
 
-    client.getTransactionsAsync(mapper.map(bank, config)) { response ->
+    client.getTransactionsAsync(mapper.map(bank, param)) { response ->
       if (response.retrievedData.isEmpty() || response.retrievedData.first().successfullyRetrievedData == false) {
         responseHolder.setResponse(mapper.mapError(response))
       } else {

@@ -6,6 +6,7 @@ import net.codinux.banking.rest.domain.model.BankData
 import net.dankito.banking.fints.messages.datenelemente.abgeleiteteformate.Laenderkennzeichen
 import net.dankito.banking.fints.messages.datenelemente.implementierte.tan.*
 import net.dankito.banking.fints.model.*
+import net.dankito.banking.fints.model.RetrievedAccountData
 import net.dankito.banking.fints.response.client.FinTsClientResponse
 import net.dankito.banking.fints.response.segments.AccountType
 import net.dankito.utils.multiplatform.toDate
@@ -21,8 +22,9 @@ class fints4kModelMapper {
     return AccountData(account.identifier, account.subAccountNumber, Laenderkennzeichen.Germany, bank.bankCode, account.iban, "", null, null, "", null, null, listOf())
   }
 
-  fun map(accountData: RetrievedAccountData): RetrievedAccountTransactions {
-    return RetrievedAccountTransactions(map(accountData.bookedTransactions), accountData.balance?.bigDecimal)
+  fun map(data: RetrievedAccountData): RetrievedTransactionsWithAccount {
+    return RetrievedTransactionsWithAccount(map(data.account), data.balance?.bigDecimal, map(data.bookedTransactions),
+      data.retrievedTransactionsFrom, data.retrievedTransactionsTo)
   }
 
   fun map(transactions: Collection<net.dankito.banking.fints.model.AccountTransaction>): List<AccountTransaction> {
@@ -144,10 +146,10 @@ class fints4kModelMapper {
   }
 
 
-  fun map(bank: BankData, config: GetAccountTransactionsConfig): GetTransactionsParameter {
-    val account = map(bank, config.account)
+  fun map(bank: BankData, param: GetAccountDataParameter): GetTransactionsParameter {
+    val account = map(bank, param.account)
 
-    return GetTransactionsParameter(account, config.alsoRetrieveBalance, config.fromDate?.toDate(), config.toDate?.toDate(), abortIfTanIsRequired = config.abortIfTanIsRequired)
+    return GetTransactionsParameter(account, param.alsoRetrieveBalance, param.fromDate?.toDate(), param.toDate?.toDate(), abortIfTanIsRequired = param.abortIfTanIsRequired)
   }
 
 

@@ -3,6 +3,7 @@ package net.codinux.banking.rest.domain.clients.hbci4j.mapper
 import net.codinux.banking.rest.domain.model.*
 import net.codinux.banking.rest.domain.model.tan.*
 import net.dankito.banking.fints.transactions.mt940.Mt940Parser
+import net.dankito.utils.datetime.asUtilDate
 import org.kapott.hbci.GV_Result.GVRKUms
 import org.kapott.hbci.manager.HBCIUser
 import org.kapott.hbci.passport.AbstractPinTanPassport
@@ -10,6 +11,7 @@ import org.kapott.hbci.passport.HBCIPassport
 import org.kapott.hbci.structures.Konto
 import org.kapott.hbci.structures.Value
 import java.math.BigDecimal
+import java.time.LocalDate
 
 
 class hbci4jModelMapper {
@@ -28,24 +30,29 @@ class hbci4jModelMapper {
 
     fun mapAccounts(accounts: Array<out Konto>, passport: HBCIPassport): List<BankAccount> {
         return accounts.map { account ->
-            val iban = if (account.iban.isNullOrBlank() == false) account.iban else passport.upd.getProperty("KInfo.iban") ?: ""
-            val accountHolderName = if (account.name2.isNullOrBlank() == false) account.name + " " + account.name2 else account.name
-            val productName = account.type ?: passport.upd.getProperty("KInfo.konto")
-
-            return@map BankAccount(account.number,
-                account.subnumber,
-                iban,
-                accountHolderName,
-                mapBankAccountType(account),
-                productName,
-                account.curr,
-                account.limit?.value?.let { mapValue(it).toString() },
-                account.allowedGVs.contains("HKKAZ"),
-                account.allowedGVs.contains("HKSAL"),
-                account.allowedGVs.contains("HKCCS"),
-                false // TODO: may implement real time transfer one day
-            )
+            return@map mapAccount(account, passport)
         }
+    }
+
+    fun mapAccount(account: Konto, passport: HBCIPassport): BankAccount {
+        val iban = if (account.iban.isNullOrBlank() == false) account.iban else passport.upd.getProperty("KInfo.iban") ?: ""
+        val accountHolderName = if (account.name2.isNullOrBlank() == false) account.name + " " + account.name2 else account.name
+        val productName = account.type ?: passport.upd.getProperty("KInfo.konto")
+
+        return BankAccount(
+            account.number,
+            account.subnumber,
+            iban,
+            accountHolderName,
+            mapBankAccountType(account),
+            productName,
+            account.curr,
+            account.limit?.value?.let { mapValue(it).toString() },
+            account.allowedGVs.contains("HKKAZ"),
+            account.allowedGVs.contains("HKSAL"),
+            account.allowedGVs.contains("HKCCS"),
+            false // TODO: may implement real time transfer one day
+        )
     }
 
     private fun mapBankAccountType(account: Konto): BankAccountType {
@@ -208,6 +215,16 @@ class hbci4jModelMapper {
         return null
     }
 
+
+    fun mapGetTransactionsResult(account: Konto, result: GVRKUms, balance: BigDecimal?, param: GetAccountDataParameter, passport: HBCIPassport): RetrievedTransactionsWithAccount {
+        val mappedAccount = mapAccount(account, passport)
+        val bookedTransactions = mapTransactions(result)
+
+        val fromDate = param.fromDate
+            ?: bookedTransactions.map { it.valueDate }.minByOrNull { it.time }
+
+        return RetrievedTransactionsWithAccount(mappedAccount, balance, bookedTransactions, fromDate, param.toDate ?: LocalDate.now().asUtilDate())
+    }
 
     fun mapTransactions(result: GVRKUms): List<AccountTransaction> {
         val entries = mutableListOf<AccountTransaction>()

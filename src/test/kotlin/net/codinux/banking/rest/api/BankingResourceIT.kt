@@ -34,14 +34,14 @@ class BankingResourceIT {
 
 
   @Test
-  fun getAccountData() {
+  fun getAccountInfo() {
 
-    val bankData = postAndValidateSuccessful("account", getCredentials(), BankData::class.java)
+    val result = postAndValidateSuccessful("accountinfo", GetAccountInfoParameter(bankCode, loginName, password, true), RetrievedAccountsData::class.java)
 
-    assertThat(bankData.bankCode).isEqualTo(bankCode)
-    assertThat(bankData.loginName).isEqualTo(loginName)
-    assertThat(bankData.accounts).isNotEmpty
-    assertThat(bankData.tanMethods).isNotEmpty
+    assertThat(result.bank.bankCode).isEqualTo(bankCode)
+    assertThat(result.bank.loginName).isEqualTo(loginName)
+    assertThat(result.bank.accounts).isNotEmpty
+    assertThat(result.bank.tanMethods).isNotEmpty
   }
 
   /**
@@ -49,20 +49,17 @@ class BankingResourceIT {
    */
   @Test
   fun getAccountTransactionsOfLast90Days() {
-    val config = GetAccountTransactionsConfig(getCredentials(), getBankAccountIdentifier(), getTransactionsOfLast90Days = true)
+    val config = GetAccountDataParameter(getCredentials(), getBankAccountIdentifier(), getTransactionsOfLast90Days = true)
 
-    val result = postAndValidateSuccessful("transactions", config, RetrievedAccountTransactions::class.java)
-
-    assertThat(result.balance).isNotNull()
-    assertThat(result.transactions).isNotEmpty
+    val result = postAndValidateSuccessfulRetrievedAccountData("bankaccountsdata", config)
   }
 
   @Disabled // not an automatic test, requires manually entering a TAN
   @Test
-  fun getAccountTransactions() {
-    val config = GetAccountTransactionsConfig(getCredentials(), getBankAccountIdentifier())
+  fun getAccountData() {
+    val config = GetAccountDataParameter(getCredentials(), getBankAccountIdentifier())
 
-    val tanRequiredResult = postAndValidateTanRequired("transactions", config)
+    val tanRequiredResult = postAndValidateTanRequired("bankaccountsdata", config)
 
     val tanChallenge = tanRequiredResult.tanChallenge // just that you can better see it in debug window
 
@@ -72,10 +69,7 @@ class BankingResourceIT {
     // TODO: if you a TAN method that does not required data from tanChallenge above like AppTan or SmsTan, create a debugging break point below,
     // get the TAN and then set enteredTan variable in debug window with 'Set variable...'
 
-    val transactionsResult = postAndValidateSuccessful("tan/${tanRequiredResult.tanRequestId}", EnterTanResult(enteredTan), RetrievedAccountTransactions::class.java)
-
-    assertThat(transactionsResult.balance).isNotNull()
-    assertThat(transactionsResult.transactions).isNotEmpty
+    val transactionsResult = postAndValidateSuccessfulRetrievedAccountData("tan/${tanRequiredResult.tanRequestId}", EnterTanResult(enteredTan))
   }
 
 
@@ -103,6 +97,30 @@ class BankingResourceIT {
       .body("tanRequired", nullValue())
 
     return response.jsonPath().getObject("data", responseClass)
+  }
+
+  private fun postAndValidateSuccessfulRetrievedAccountData(endpoint: String, body: Any): RetrievedTransactions {
+    val response = postAndValidateBasicData(endpoint, body)
+
+    response.then()
+      .body("account", not(nullValue()))
+      .body("retrieveTransactionsResponse", not(nullValue()))
+      .body("retrieveTransactionsResponse.type", `is`("Success"))
+      .body("retrieveTransactionsResponse.error", nullValue())
+      .body("retrieveTransactionsResponse.errorType", nullValue())
+      .body("retrieveTransactionsResponse.data", not(nullValue()))
+      .body("retrieveTransactionsResponse.tanRequired", nullValue())
+
+
+    val result = response.jsonPath().getObject("retrieveTransactionsResponse.data", RetrievedTransactions::class.java)
+
+    assertThat(result).isNotNull()
+    assertThat(result.balance).isNotNull()
+    assertThat(result.retrievedTransactionsFrom).isNotNull()
+    assertThat(result.retrievedTransactionsTo).isNotNull()
+    assertThat(result.bookedTransactions).isNotEmpty
+
+    return result
   }
 
   private fun postAndValidateTanRequired(endpoint: String, body: Any): TanRequired {

@@ -8,6 +8,7 @@ import net.codinux.banking.rest.domain.model.tan.TanChallenge
 import net.codinux.banking.rest.domain.model.tan.TanRequired
 import net.dankito.banking.bankfinder.InMemoryBankFinder
 import java.util.*
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicLong
@@ -29,38 +30,63 @@ class BankingService {
 
 
 
-  fun getAccountData(credentials: BankCredentials): Response<BankData> {
-    val findBankResult = findBank(credentials)
+  fun getAccountInfo(param: GetAccountInfoParameter): Response<RetrievedAccountsData> {
+    val findBankResult = findBank(param)
 
     if (findBankResult.foundBank == null) {
       return Response(findBankResult.error!!, findBankResult.errorType)
     }
 
-    return executeRequestThatPotentiallyRequiresTan(findBankResult.foundBank) { client -> client.getAccountData() }
+    return executeRequestThatPotentiallyRequiresTan(findBankResult.foundBank) { client -> getAccountInfo(client, param) }
   }
 
+  private fun getAccountInfo(client: IBankingClient, param: GetAccountInfoParameter): Response<RetrievedAccountsData> {
+    val accountDataResponse = client.getAccountInfo()
 
-  /**
-   * According to PSD2 for the account transactions of the last 90 days the two-factor authorization does not have to
-   * be applied. It depends on the bank if they request a second factor or not.
-   *
-   * So may this call succeeds without being asked for a TAN.
-   */
-  fun getAccountTransactionsOfLast90Days(config: GetAccountTransactionsConfig): Response<RetrievedAccountTransactions> {
-    config.fromDate = calculate90DaysAgo()
+    if (accountDataResponse.data != null && param.tryToRetrieveAccountTransactionOfLast90DaysWithoutTan) {
+      val bank = accountDataResponse.data
+      val futures = bank.accounts.map { account ->
+        CompletableFuture.supplyAsync {
+          val getDataParam = GetAccountDataParameter(param, account, true, true, abortIfTanIsRequired = true)
+          getAccountData(getDataParam, bank, account) }
+      }
+      val resultOfAll = CompletableFuture.allOf(*futures.toTypedArray()).get() // why does get() return void and not the result of the single futures (List<Response<RetrievedAccountData>>)?
 
-    return getAccountTransactions(config)
-  }
-
-  fun getAccountTransactions(config: GetAccountTransactionsConfig): Response<RetrievedAccountTransactions> {
-    val findBankResult = findBank(config.credentials)
-
-    if (findBankResult.foundBank == null) {
-      return Response(findBankResult.error!!, findBankResult.errorType)
+      val accountsDataResult = futures.map { it.get() }
+      return Response(RetrievedAccountsData(bank, accountsDataResult))
     }
 
-    val bank = findBankResult.foundBank
-    return executeRequestThatPotentiallyRequiresTan(bank) { client -> client.getTransactions(bank, config) }
+    return accountDataResponse as Response<RetrievedAccountsData>
+  }
+
+
+  fun getAccountData(param: GetAccountDataParameter): RetrievedAccountData {
+    val account = BankAccount(param.account.identifier, param.account.subAccountNumber, param.account.iban, "")
+    val findBankResult = findBank(param.credentials)
+
+    if (findBankResult.foundBank == null) {
+      return RetrievedAccountData(account, Response(findBankResult.error!!, findBankResult.errorType))
+    }
+
+    return getAccountData(param, findBankResult.foundBank, account)
+  }
+
+  private fun getAccountData(param: GetAccountDataParameter, bank: BankData, account: BankAccount): RetrievedAccountData {
+    val transactionsResponse = getAccountTransactions(param, bank)
+
+    if (transactionsResponse.data != null) {
+      return RetrievedAccountData(transactionsResponse.data.account, transactionsResponse as Response<RetrievedTransactions>)
+    }
+
+    return RetrievedAccountData(account, transactionsResponse as Response<RetrievedTransactions>)
+  }
+
+  private fun getAccountTransactions(param: GetAccountDataParameter, bank: BankData): Response<RetrievedTransactionsWithAccount> {
+    if (param.getTransactionsOfLast90Days) {
+      param.fromDate = calculate90DaysAgo()
+    }
+
+    return executeRequestThatPotentiallyRequiresTan(bank) { client -> client.getTransactions(bank, param) }
   }
 
   private fun calculate90DaysAgo(): Date {

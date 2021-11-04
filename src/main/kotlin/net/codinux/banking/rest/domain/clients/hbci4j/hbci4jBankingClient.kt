@@ -2,6 +2,7 @@ package net.codinux.banking.rest.domain.clients.hbci4j
 
 import net.codinux.banking.rest.domain.clients.hbci4j.mapper.hbci4jModelMapper
 import net.codinux.banking.rest.domain.clients.hbci4j.model.ConnectResult
+import net.codinux.banking.rest.domain.clients.hbci4j.model.GetAccountTransactionsResult
 import net.codinux.banking.rest.domain.model.*
 import net.dankito.utils.multiplatform.getInnerExceptionMessage
 import org.kapott.hbci.GV.HBCIJob
@@ -13,7 +14,6 @@ import org.kapott.hbci.manager.HBCIVersion
 import org.kapott.hbci.passport.AbstractHBCIPassport
 import org.kapott.hbci.passport.AbstractPinTanPassport
 import org.kapott.hbci.passport.HBCIPassport
-import org.kapott.hbci.status.HBCIExecStatus
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.math.BigDecimal
@@ -38,7 +38,7 @@ class hbci4jBankingClient(
     private val mapper = hbci4jModelMapper()
 
 
-    override fun getAccountData(): Response<BankData> {
+    override fun getAccountInfo(): Response<BankData> {
         val connection = connect()
         closeConnection(connection)
 
@@ -60,13 +60,14 @@ class hbci4jBankingClient(
     }
 
 
-    override fun getTransactions(bank: BankData, config: GetAccountTransactionsConfig): Response<RetrievedAccountTransactions> {
+    override fun getTransactions(bank: BankData, param: GetAccountDataParameter): Response<RetrievedTransactionsWithAccount> {
         val connection = connect()
-        val account = config.account
+        val account = param.account
 
         connection.handle?.let { handle ->
             try {
-                val (nullableBalanceJob, accountTransactionsJob, status) = executeJobsForGetAccountTransactions(handle, bank, config)
+                val result = executeJobsForGetAccountTransactions(handle, bank, param)
+                val status = result.status
 
                 // Pruefen, ob die Kommunikation mit der Bank grundsaetzlich geklappt hat
                 if (!status.isOK) {
@@ -76,8 +77,8 @@ class hbci4jBankingClient(
 
                 // Auswertung des Saldo-Abrufs.
                 var balance: BigDecimal? = null
-                if (config.alsoRetrieveBalance && nullableBalanceJob != null) {
-                    val balanceResult = nullableBalanceJob.jobResult as GVRSaldoReq
+                if (param.alsoRetrieveBalance && result.balanceJob != null) {
+                    val balanceResult = result.balanceJob.jobResult as GVRSaldoReq
                     if(balanceResult.isOK == false) {
                         log.error("Could not fetch balance of bank account $account: $balanceResult", balanceResult.getJobStatus().exceptions)
                         return Response("Could not fetch balance of bank account $account: $balanceResult")
@@ -89,15 +90,15 @@ class hbci4jBankingClient(
 
                 // Das Ergebnis des Jobs koennen wir auf "GVRKUms" casten. Jobs des Typs "KUmsAll"
                 // liefern immer diesen Typ.
-                val result = accountTransactionsJob.jobResult as GVRKUms
+                val transactionsResult = result.accountTransactionsJob.jobResult as GVRKUms
 
                 // Pruefen, ob der Abruf der Umsaetze geklappt hat
-                if (result.isOK == false) {
-                    log.error("Could not get fetch account transactions of bank account $account: $result", result.getJobStatus().exceptions)
-                    return Response("Could not fetch account transactions of bank account $account: $result")
+                if (transactionsResult.isOK == false) {
+                    log.error("Could not get fetch account transactions of bank account $account: $transactionsResult", transactionsResult.getJobStatus().exceptions)
+                    return Response("Could not fetch account transactions of bank account $account: $transactionsResult")
                 }
 
-                return Response(RetrievedAccountTransactions(mapper.mapTransactions(result), balance))
+                return Response(mapper.mapGetTransactionsResult(result.account, transactionsResult, balance, param, connection.passport!!))
             }
             catch(e: Exception) {
                 log.error("Could not get account transactions for bank ${bank.bankCode}", e)
@@ -113,12 +114,12 @@ class hbci4jBankingClient(
         return Response(connection.error?.getInnerExceptionMessage() ?: "Could not connect")
     }
 
-    private fun executeJobsForGetAccountTransactions(handle: HBCIHandler, bank: BankData, config: GetAccountTransactionsConfig): Triple<HBCIJob?, HBCIJob, HBCIExecStatus> {
-        val konto = mapper.mapToKonto(bank, config.account)
+    private fun executeJobsForGetAccountTransactions(handle: HBCIHandler, bank: BankData, param: GetAccountDataParameter): GetAccountTransactionsResult {
+        val konto = mapper.mapToKonto(bank, param.account)
 
         // 1. Auftrag fuer das Abrufen des Saldos erzeugen
         var balanceJob: HBCIJob? = null
-        if (config.alsoRetrieveBalance) {
+        if (param.alsoRetrieveBalance) {
             val createdBalanceJob = handle.newJob("SaldoReq")
             createdBalanceJob.setParam("my", konto) // festlegen, welches Konto abgefragt werden soll.
             createdBalanceJob.addToQueue() // Zur Liste der auszufuehrenden Auftraege hinzufuegen
@@ -129,10 +130,10 @@ class hbci4jBankingClient(
         val accountTransactionsJob = handle.newJob("KUmsAll")
         accountTransactionsJob.setParam("my", konto) // festlegen, welches Konto abgefragt werden soll.
         // evtl. Datum setzen, ab welchem die Auszüge geholt werden sollen
-        config.fromDate?.let {
+        param.fromDate?.let {
             accountTransactionsJob.setParam("startdate", HbciLibDateFormat.format(it))
         }
-        config.toDate?.let {
+        param.toDate?.let {
             accountTransactionsJob.setParam("enddate", HbciLibDateFormat.format(it))
         }
         accountTransactionsJob.addToQueue() // Zur Liste der auszufuehrenden Auftraege hinzufuegen
@@ -143,7 +144,7 @@ class hbci4jBankingClient(
         // Alle Auftraege aus der Liste ausfuehren.
         val status = handle.execute()
 
-        return Triple(balanceJob, accountTransactionsJob, status)
+        return GetAccountTransactionsResult(konto, balanceJob, accountTransactionsJob, status)
     }
 
 
