@@ -96,8 +96,9 @@ class BankingResourceIT {
     val response = postAndValidateBasicData(endpoint, body)
 
     response.then()
-      .body("successful", `is`(true))
+      .body("type", `is`("Success"))
       .body("error", nullValue())
+      .body("errorType", nullValue())
       .body("data", not(nullValue()))
       .body("tanRequired", nullValue())
 
@@ -108,8 +109,9 @@ class BankingResourceIT {
     val response = postAndValidateBasicData(endpoint, body)
 
     response.then()
-      .body("successful", `is`(false))
+      .body("type", `is`("TanRequired"))
       .body("error", nullValue())
+      .body("errorType", nullValue())
       .body("data", nullValue())
       .body("tanRequired", not(nullValue()))
 
