@@ -11,7 +11,7 @@ import javax.ws.rs.*
 import javax.ws.rs.core.MediaType
 
 
-@Path("/banking/v1-beta")
+@Path(Urls.BaseUrl)
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 class BankingResource {
@@ -21,7 +21,7 @@ class BankingResource {
 
 
   @POST
-  @Path("accountinfo")
+  @Path(Urls.AccountInfoSubPath)
   @Operation(operationId = "getAccountInfo", summary = "Retrieve information for an account. Call this first to get the information to call the other APIs.",
     description = "Retrieves information for an account like its bank accounts (Girokonto, Kreditkartenkonto etc.), its supported TAN methods and so on.<br><br>" +
     "Additionally may also retrieves the transactions of the last 90 days, but only if no TAN is required for this.<br>" +
@@ -37,7 +37,7 @@ class BankingResource {
   }
 
   @POST
-  @Path("bankaccountsdata")
+  @Path(Urls.BankAccountDataSubPath)
   @Operation(operationId = "getBankAccountData", summary = "Retrieves data like account transactions (Kontoumsätze) and balance (Saldo) for a single bank account")
   @APIResponses(
     APIResponse(responseCode = "200", description = "No matter if account transactions could successfully be retrieved, the credentials are wrong, a TAN is required or " +

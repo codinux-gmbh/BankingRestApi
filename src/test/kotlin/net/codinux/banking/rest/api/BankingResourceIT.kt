@@ -36,7 +36,7 @@ class BankingResourceIT {
   @Test
   fun getAccountInfo() {
 
-    val result = postAndValidateSuccessful("accountinfo", GetAccountInfoParameter(bankCode, loginName, password, true), RetrievedAccountsData::class.java)
+    val result = postAndValidateSuccessful(Urls.AccountInfoSubPath, GetAccountInfoParameter(bankCode, loginName, password, true), RetrievedAccountsData::class.java)
 
     assertThat(result.bank.bankCode).isEqualTo(bankCode)
     assertThat(result.bank.loginName).isEqualTo(loginName)
@@ -51,7 +51,7 @@ class BankingResourceIT {
   fun getAccountTransactionsOfLast90Days() {
     val config = GetAccountDataParameter(getCredentials(), getBankAccountIdentifier(), getTransactionsOfLast90Days = true)
 
-    val result = postAndValidateSuccessfulRetrievedAccountData("bankaccountsdata", config)
+    val result = postAndValidateSuccessfulRetrievedAccountData(Urls.BankAccountDataSubPath, config)
   }
 
   @Disabled // not an automatic test, requires manually entering a TAN
@@ -59,7 +59,7 @@ class BankingResourceIT {
   fun getAccountData() {
     val config = GetAccountDataParameter(getCredentials(), getBankAccountIdentifier())
 
-    val tanRequiredResult = postAndValidateTanRequired("bankaccountsdata", config)
+    val tanRequiredResult = postAndValidateTanRequired(Urls.BankAccountDataSubPath, config)
 
     val tanChallenge = tanRequiredResult.tanChallenge // just that you can better see it in debug window
 
@@ -83,7 +83,7 @@ class BankingResourceIT {
             .contentType(ContentType.JSON)
             .body(body)
           .`when`()
-            .post("/banking/v1-beta/" + endpoint)
+            .post(Urls.BaseUrl + endpoint)
   }
 
   private fun <T> postAndValidateSuccessful(endpoint: String, body: Any, responseClass: Class<T>): T {
