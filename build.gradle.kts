@@ -70,6 +70,7 @@ ext["artifactName"] = "banking-rest-api"
 
 ext["useNewSonatypeRepo"] = true
 ext["packageGroup"] = "net.codinux"
+ext["projectDescription"] = "REST API to communicate with German banks supporting the FinTS 3.0 protocol"
 
 ext["sourceCodeRepositoryBaseUrl"] = "https://github.com/codinux-gmbh/BankingRestApi"
 
