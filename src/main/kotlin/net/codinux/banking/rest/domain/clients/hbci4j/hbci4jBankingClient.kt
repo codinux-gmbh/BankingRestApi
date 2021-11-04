@@ -50,8 +50,6 @@ class hbci4jBankingClient(
                     return Response("Could not get accounts for this bank credentials")
                 }
 
-                this.bank.accounts = mapper.mapAccounts(accounts, passport)
-
                 return Response(bank)
             }
         }
@@ -115,20 +113,20 @@ class hbci4jBankingClient(
     }
 
     private fun executeJobsForGetAccountTransactions(handle: HBCIHandler, bank: BankData, param: GetAccountDataParameter): GetAccountTransactionsResult {
-        val konto = mapper.mapToKonto(bank, param.account)
+        var account = mapper.mapToKonto(bank, param.account)
 
         // 1. Auftrag fuer das Abrufen des Saldos erzeugen
         var balanceJob: HBCIJob? = null
         if (param.alsoRetrieveBalance) {
             val createdBalanceJob = handle.newJob("SaldoReq")
-            createdBalanceJob.setParam("my", konto) // festlegen, welches Konto abgefragt werden soll.
+            createdBalanceJob.setParam("my", account) // festlegen, welches Konto abgefragt werden soll.
             createdBalanceJob.addToQueue() // Zur Liste der auszufuehrenden Auftraege hinzufuegen
 
             balanceJob = createdBalanceJob
         }
         // 2. Auftrag fuer das Abrufen der Umsaetze erzeugen
         val accountTransactionsJob = handle.newJob("KUmsAll")
-        accountTransactionsJob.setParam("my", konto) // festlegen, welches Konto abgefragt werden soll.
+        accountTransactionsJob.setParam("my", account) // festlegen, welches Konto abgefragt werden soll.
         // evtl. Datum setzen, ab welchem die Auszüge geholt werden sollen
         param.fromDate?.let {
             accountTransactionsJob.setParam("startdate", HbciLibDateFormat.format(it))
@@ -144,7 +142,16 @@ class hbci4jBankingClient(
         // Alle Auftraege aus der Liste ausfuehren.
         val status = handle.execute()
 
-        return GetAccountTransactionsResult(konto, balanceJob, accountTransactionsJob, status)
+        if (status.isOK) {
+            mapBankDataFromPassport(handle.passport!!, bank)
+        }
+
+        // update account with retrieved one
+        handle.passport?.accounts?.firstOrNull { it.number == account.number }?.let {
+            account = it
+        }
+
+        return GetAccountTransactionsResult(account, balanceJob, accountTransactionsJob, status)
     }
 
 
@@ -195,12 +202,15 @@ class hbci4jBankingClient(
             // "None" verwendet. Bei PIN/TAN kommt "Base64" zum Einsatz.
             passport.filterType = "Base64"
 
+            // if passport has been created before, map data from passport to bank
             mapBankDataFromPassport(passport, bank)
 
             // Verbindung zum Server aufbauen
             handle = HBCIHandler(version.getId(), passport)
 
 
+            // now map retrieved data to bank
+            mapBankDataFromPassport(passport, bank)
         }
         catch(e: Exception) {
             log.error("Could not connect to bank ${bank.bankCode}", e)
@@ -213,6 +223,10 @@ class hbci4jBankingClient(
     }
 
     private fun mapBankDataFromPassport(passport: HBCIPassport, bank: BankData) {
+        if (passport.accounts.isNullOrEmpty() == false) {
+            this.bank.accounts = mapper.mapAccounts(passport)
+        }
+
         // when passport has been created before, allowedTwostepMechanisms is already set (and HbciCallback's selectTanMethod() will not be called therefore we can't do it there)
         (passport as? AbstractPinTanPassport)?.let { pinTanPassport ->
             if (pinTanPassport.allowedTwostepMechanisms.isNotEmpty()) {

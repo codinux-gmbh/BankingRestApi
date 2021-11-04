@@ -28,8 +28,8 @@ class hbci4jModelMapper {
 
 
 
-    fun mapAccounts(accounts: Array<out Konto>, passport: HBCIPassport): List<BankAccount> {
-        return accounts.map { account ->
+    fun mapAccounts(passport: HBCIPassport): List<BankAccount> {
+        return passport.accounts.map { account ->
             return@map mapAccount(account, passport)
         }
     }
