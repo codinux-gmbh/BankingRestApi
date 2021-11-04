@@ -10,10 +10,10 @@ open class BankAccount(
     val productName: String? = null,
     val currency: String = "EUR",
     val accountLimit: String? = null,
-    val supportsRetrievingAccountTransactions: Boolean = false,
+    val supportsRetrievingTransactions: Boolean = false,
     val supportsRetrievingBalance: Boolean = false,
     val supportsTransferringMoney: Boolean = false,
-    val supportsRealTimeTransfer: Boolean = false
+    val supportsInstantPayment: Boolean = false
 ) : BankAccountIdentifier(identifier, subAccountNumber, iban) {
 
     internal constructor() : this("", null, null, "") // for object deserializers
