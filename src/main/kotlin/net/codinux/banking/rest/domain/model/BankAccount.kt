@@ -18,6 +18,8 @@ open class BankAccount(
 
     internal constructor() : this("", null, null, "") // for object deserializers
 
+    constructor(identifier: BankAccountIdentifier) : this(identifier.identifier, identifier.subAccountNumber, identifier.iban, "")
+
 
 
     override fun toString(): String {

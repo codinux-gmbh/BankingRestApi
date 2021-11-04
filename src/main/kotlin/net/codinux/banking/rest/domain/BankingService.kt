@@ -61,7 +61,7 @@ class BankingService {
 
 
   fun getAccountData(param: GetAccountDataParameter): RetrievedAccountData {
-    val account = BankAccount(param.account.identifier, param.account.subAccountNumber, param.account.iban, "")
+    val account = BankAccount(param.account)
     val findBankResult = findBank(param.credentials)
 
     if (findBankResult.foundBank == null) {
