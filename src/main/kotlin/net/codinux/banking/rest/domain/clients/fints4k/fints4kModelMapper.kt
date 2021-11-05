@@ -9,6 +9,8 @@ import net.dankito.banking.fints.model.*
 import net.dankito.banking.fints.model.RetrievedAccountData
 import net.dankito.banking.fints.response.client.FinTsClientResponse
 import net.dankito.banking.fints.response.segments.AccountType
+import net.dankito.banking.fints.tan.FlickerCode
+import net.dankito.banking.fints.tan.TanImage
 import net.dankito.utils.multiplatform.toDate
 
 
@@ -83,10 +85,6 @@ class fints4kModelMapper {
   }
 
 
-  fun map(challenge: TanChallenge): net.codinux.banking.rest.domain.model.tan.TanChallenge {
-    return net.codinux.banking.rest.domain.model.tan.TanChallenge(challenge.messageToShowToUser, map(challenge.tanMethod))
-  }
-
   fun map(tanMethods: List<TanMethod>): List<net.codinux.banking.rest.domain.model.tan.TanMethod> {
     return tanMethods.map { map(it) }
   }
@@ -117,16 +115,6 @@ class fints4kModelMapper {
     }
   }
 
-  fun map(enterTanResult: net.codinux.banking.rest.domain.model.tan.EnterTanResult): EnterTanResult? {
-    enterTanResult.enteredTan?.let {
-      return EnterTanResult.userEnteredTan(it)
-    }
-
-    // TODO: also map changeTanMethodTo and changeTanMediumTo
-
-    return EnterTanResult.userDidNotEnterTan()
-  }
-
   private fun map(medium: TanMedium): net.codinux.banking.rest.domain.model.tan.TanMedium {
     val name = medium.mediumName ?: "" // should always be set, just to be on the safe side
     val status = map(medium.status)
@@ -143,6 +131,36 @@ class fints4kModelMapper {
       TanMediumStatus.Aktiv -> net.codinux.banking.rest.domain.model.tan.TanMediumStatus.Used
       else -> net.codinux.banking.rest.domain.model.tan.TanMediumStatus.Available
     }
+  }
+
+
+  fun map(enterTanResult: net.codinux.banking.rest.domain.model.tan.EnterTanResult): EnterTanResult? {
+    enterTanResult.enteredTan?.let {
+      return EnterTanResult.userEnteredTan(it)
+    }
+
+    // TODO: also map changeTanMethodTo and changeTanMediumTo
+
+    return EnterTanResult.userDidNotEnterTan()
+  }
+
+  fun map(challenge: TanChallenge): net.codinux.banking.rest.domain.model.tan.TanChallenge {
+    val message = challenge.messageToShowToUser
+    val tanMethod = map(challenge.tanMethod)
+
+    return when (challenge) {
+      is ImageTanChallenge -> net.codinux.banking.rest.domain.model.tan.ImageTanChallenge(map(challenge.image), message, tanMethod)
+      is FlickerCodeTanChallenge -> net.codinux.banking.rest.domain.model.tan.FlickerCodeTanChallenge(map(challenge.flickerCode), message, tanMethod)
+      else -> net.codinux.banking.rest.domain.model.tan.TanChallenge(message, tanMethod)
+    }
+  }
+
+  private fun map(image: TanImage): net.codinux.banking.rest.domain.model.tan.TanImage {
+    return net.codinux.banking.rest.domain.model.tan.TanImage(image.mimeType, image.imageBytes, image.decodingError)
+  }
+
+  private fun map(flickerCode: FlickerCode): net.codinux.banking.rest.domain.model.tan.FlickerCode {
+    return net.codinux.banking.rest.domain.model.tan.FlickerCode(flickerCode.challengeHHD_UC, flickerCode.parsedDataSet, flickerCode.decodingError)
   }
 
 
