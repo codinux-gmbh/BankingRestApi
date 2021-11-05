@@ -11,6 +11,8 @@ class Urls {
 
     const val BankAccountDataSubPath = "bankaccountdata/"
 
+    const val PostEnterTanResultSubPath = "tan/{tanRequestId}"
+
   }
 
 }

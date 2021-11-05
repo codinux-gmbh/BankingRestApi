@@ -49,7 +49,7 @@ class BankingResource {
   }
 
   @POST
-  @Path("tan/{tanRequestId}")
+  @Path(Urls.PostEnterTanResultSubPath)
   @Operation(summary = "If a previous operation returned that it requires a TAN, submit the entered TAN here. The response is the same as for the original operation.")
   @APIResponses(
     APIResponse(responseCode = "200", description = "The same data structure as for the original operation will be returned."),
