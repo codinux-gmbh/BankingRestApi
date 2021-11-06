@@ -41,7 +41,6 @@ class BankingService {
 
 
   fun getAccountData(param: GetAccountDataParameter): Response<RetrievedAccountData> {
-    val account = BankAccount(param.account)
     val findBankResult = findBank(param.credentials)
 
     if (findBankResult.foundBank == null) {
@@ -113,10 +112,14 @@ class BankingService {
   private fun getAccountsData(param: GetAccountsDataParameter, bank: BankData, accounts: List<BankAccountIdentifier>): Response<List<RetrievedAccountData>> {
     val getAccountDataResponses = mutableListOf<RetrievedAccountData>()
 
+    // don't execute requests in parallel anymore as if for one account a TAN is entered, then for the other accounts no TAN will be required
+    // executing requests in parallel would result in having to enter a TAN for all accounts
     for (account in accounts) {
       val getDataParam = GetAccountDataParameter(param.credentials, account, param.alsoRetrieveBalance, param.getTransactionsOfLast90Days, param.fromDate, param.toDate, param.abortIfTanIsRequired)
       val accountDataResponse = getAccountData(getDataParam, bank)
-      if (accountDataResponse.data == null) { // if retrieving data for one account fails then in almost all cases retrieving data for the other accounts fails as well -> abort
+
+      // if retrieving data for one account fails then in almost all cases retrieving data for the other accounts fails as well (e.g. as a TAN is required) -> abort
+      if (accountDataResponse.data == null) {
         return accountDataResponse as Response<List<RetrievedAccountData>>
       }
 
