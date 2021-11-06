@@ -8,7 +8,6 @@ import net.codinux.banking.rest.domain.model.tan.TanChallenge
 import net.codinux.banking.rest.domain.model.tan.TanRequired
 import net.dankito.banking.bankfinder.InMemoryBankFinder
 import java.util.*
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicLong
@@ -30,27 +29,14 @@ class BankingService {
 
 
 
-  fun getAccountInfo(param: GetAccountInfoParameter): Response<RetrievedAccountsData> {
+  fun getAccountInfo(param: GetAccountInfoParameter): Response<BankData> {
     val findBankResult = findBank(param)
 
     if (findBankResult.foundBank == null) {
       return Response(findBankResult.error!!, findBankResult.errorType)
     }
 
-    return executeRequestThatPotentiallyRequiresTan(findBankResult.foundBank) { client -> getAccountInfo(client, param) }
-  }
-
-  private fun getAccountInfo(client: IBankingClient, param: GetAccountInfoParameter): Response<RetrievedAccountsData> {
-    val accountDataResponse = client.getAccountInfo()
-
-    if (accountDataResponse.data != null && param.tryToRetrieveAccountTransactionOfLast90DaysWithoutTan) {
-      val bank = accountDataResponse.data
-      val getAccountsDataParam = GetAccountsDataParameter(param, bank.accounts, true, true, abortIfTanIsRequired = true)
-      val accountsDataResult = getAccountsData(getAccountsDataParam, bank, bank.accounts)
-      return Response(RetrievedAccountsData(bank, accountsDataResult))
-    }
-
-    return accountDataResponse as Response<RetrievedAccountsData>
+    return executeRequestThatPotentiallyRequiresTan(findBankResult.foundBank) { client -> client.getAccountInfo() }
   }
 
 
@@ -92,16 +78,52 @@ class BankingService {
   }
 
 
-  private fun getAccountsData(param: GetAccountsDataParameter, bank: BankData, accounts: List<BankAccountIdentifier>): List<Response<RetrievedAccountData>> {
-    val futures = accounts.map { account ->
-      CompletableFuture.supplyAsync {
-        val getDataParam = GetAccountDataParameter(param.credentials, account, param.alsoRetrieveBalance, param.getTransactionsOfLast90Days, param.fromDate, param.toDate, param.abortIfTanIsRequired)
-        getAccountData(getDataParam, bank) }
+  fun getAccountsData(param: GetAccountsDataParameter): Response<RetrievedAccountsData> {
+    val findBankResult = findBank(param.credentials)
+
+    if (findBankResult.foundBank == null) {
+      return Response(findBankResult.error!!, findBankResult.errorType)
     }
 
-    CompletableFuture.allOf(*futures.toTypedArray()).get() // why does get() return null and not the result of the single futures (List<Response<RetrievedAccountData>>)?
+    var bank = findBankResult.foundBank
+    var accounts = param.accounts
 
-    return futures.map { it.get() }
+    if (accounts.isNullOrEmpty()) { // then first retrieve accounts
+      val accountInfoResponse = getAccountInfo(GetAccountInfoParameter(param.credentials))
+      if (accountInfoResponse.data != null) {
+        bank = accountInfoResponse.data
+        accounts = bank.accounts
+      } else if (accountInfoResponse.error != null) {
+        return Response(accountInfoResponse.type, null, "Could not get accounts for bank credentials ${param.credentials.bankCode} ${param.credentials.loginName}: " +
+          "${accountInfoResponse.error}", accountInfoResponse.errorType, accountInfoResponse.tanRequired)
+      }
+      else {
+        return accountInfoResponse as Response<RetrievedAccountsData>
+      }
+    }
+
+    val getAccountsDataResponse = getAccountsData(param, bank, accounts)
+    if (getAccountsDataResponse.data != null) {
+      return Response(RetrievedAccountsData(bank, getAccountsDataResponse.data))
+    }
+
+    return getAccountsDataResponse as Response<RetrievedAccountsData>
+  }
+
+  private fun getAccountsData(param: GetAccountsDataParameter, bank: BankData, accounts: List<BankAccountIdentifier>): Response<List<RetrievedAccountData>> {
+    val getAccountDataResponses = mutableListOf<RetrievedAccountData>()
+
+    for (account in accounts) {
+      val getDataParam = GetAccountDataParameter(param.credentials, account, param.alsoRetrieveBalance, param.getTransactionsOfLast90Days, param.fromDate, param.toDate, param.abortIfTanIsRequired)
+      val accountDataResponse = getAccountData(getDataParam, bank)
+      if (accountDataResponse.data == null) { // if retrieving data for one account fails then in almost all cases retrieving data for the other accounts fails as well -> abort
+        return accountDataResponse as Response<List<RetrievedAccountData>>
+      }
+
+      getAccountDataResponses.add(accountDataResponse.data)
+    }
+
+    return Response(getAccountDataResponses)
   }
 
 

@@ -36,19 +36,19 @@ class BankingResourceIT {
   @Test
   fun getAccountInfo() {
 
-    val result = postAndValidateSuccessful(Urls.AccountInfoSubPath, GetAccountInfoParameter(bankCode, loginName, password, true), RetrievedAccountsData::class.java)
+    val result = postAndValidateSuccessful(Urls.AccountInfoSubPath, GetAccountInfoParameter(bankCode, loginName, password), BankData::class.java)
 
-    assertThat(result.bank.bankCode).isEqualTo(bankCode)
-    assertThat(result.bank.loginName).isEqualTo(loginName)
-    assertThat(result.bank.accounts).isNotEmpty
-    assertThat(result.bank.tanMethods).isNotEmpty
+    assertThat(result.bankCode).isEqualTo(bankCode)
+    assertThat(result.loginName).isEqualTo(loginName)
+    assertThat(result.accounts).isNotEmpty
+    assertThat(result.tanMethods).isNotEmpty
   }
 
   /**
    * In most cases retrieving account transactions of last 90 days works without having to enter a TAN.
    */
   @Test
-  fun getAccountTransactionsOfLast90Days() {
+  fun getAccountDataOfLast90Days() {
     val config = GetAccountDataParameter(getCredentials(), getBankAccountIdentifier(), getTransactionsOfLast90Days = true)
 
     val result = postAndValidateSuccessfulRetrievedAccountData(Urls.BankAccountDataSubPath, config)
@@ -70,6 +70,20 @@ class BankingResourceIT {
     // get the TAN and then set enteredTan variable in debug window with 'Set variable...'
 
     val transactionsResult = postAndValidateSuccessfulRetrievedAccountData("tan/${tanRequiredResult.tanRequestId}", EnterTanResult(enteredTan))
+  }
+
+  @Test
+  fun getAccountsDataOfLast90Days() {
+    val parameter = GetAccountsDataParameter(getCredentials(), getTransactionsOfLast90Days = true)
+
+    val accountsData = postAndValidateSuccessful(Urls.BankAccountsDataSubPath, parameter, RetrievedAccountsData::class.java)
+
+    assertThat(accountsData.bank.bankCode).isEqualTo(bankCode)
+    assertThat(accountsData.bank.loginName).isEqualTo(loginName)
+    assertThat(accountsData.bank.accounts).isNotEmpty
+    assertThat(accountsData.bank.tanMethods).isNotEmpty
+    
+    assertThat(accountsData.accountsData).isNotEmpty()
   }
 
 

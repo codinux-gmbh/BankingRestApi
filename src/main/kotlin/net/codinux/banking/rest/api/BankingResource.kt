@@ -32,7 +32,7 @@ class BankingResource {
       "any other error occurred, currently always response code 200 is returned with more details in the response."),
     APIResponse(responseCode = "500", description = "An internal error occurred. Please inform the developers")
   )
-  fun getAccountInfo(param: GetAccountInfoParameter): Response<RetrievedAccountsData> {
+  fun getAccountInfo(param: GetAccountInfoParameter): Response<BankData> {
     return service.getAccountInfo(param)
   }
 
@@ -44,8 +44,20 @@ class BankingResource {
       "any other error occurred, currently always response code 200 is returned with more details in the response."),
     APIResponse(responseCode = "500", description = "An internal error occurred. Please inform the developers")
   )
-  fun getBankAccountData(param: GetAccountDataParameter): RetrievedAccountData {
+  fun getBankAccountData(param: GetAccountDataParameter): Response<RetrievedAccountData> {
     return service.getAccountData(param)
+  }
+
+  @POST
+  @Path(Urls.BankAccountsDataSubPath)
+  @Operation(operationId = "getBankAccountsData", summary = "Retrieves data like account transactions (Kontoumsätze) and balance (Saldo) for multiple bank accounts")
+  @APIResponses(
+    APIResponse(responseCode = "200", description = "No matter if account transactions could successfully be retrieved, the credentials are wrong, a TAN is required or " +
+      "any other error occurred, currently always response code 200 is returned with more details in the response."),
+    APIResponse(responseCode = "500", description = "An internal error occurred. Please inform the developers")
+  )
+  fun getBankAccountsData(param: GetAccountsDataParameter): Response<RetrievedAccountsData> {
+    return service.getAccountsData(param)
   }
 
   @POST
