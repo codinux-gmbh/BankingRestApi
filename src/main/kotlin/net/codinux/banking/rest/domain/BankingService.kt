@@ -45,14 +45,8 @@ class BankingService {
 
     if (accountDataResponse.data != null && param.tryToRetrieveAccountTransactionOfLast90DaysWithoutTan) {
       val bank = accountDataResponse.data
-      val futures = bank.accounts.map { account ->
-        CompletableFuture.supplyAsync {
-          val getDataParam = GetAccountDataParameter(param, account, true, true, abortIfTanIsRequired = true)
-          getAccountData(getDataParam, bank, account) }
-      }
-      val resultOfAll = CompletableFuture.allOf(*futures.toTypedArray()).get() // why does get() return void and not the result of the single futures (List<Response<RetrievedAccountData>>)?
-
-      val accountsDataResult = futures.map { it.get() }
+      val getAccountsDataParam = GetAccountsDataParameter(param, bank.accounts, true, true, abortIfTanIsRequired = true)
+      val accountsDataResult = getAccountsData(getAccountsDataParam, bank, bank.accounts)
       return Response(RetrievedAccountsData(bank, accountsDataResult))
     }
 
@@ -60,25 +54,25 @@ class BankingService {
   }
 
 
-  fun getAccountData(param: GetAccountDataParameter): RetrievedAccountData {
+  fun getAccountData(param: GetAccountDataParameter): Response<RetrievedAccountData> {
     val account = BankAccount(param.account)
     val findBankResult = findBank(param.credentials)
 
     if (findBankResult.foundBank == null) {
-      return RetrievedAccountData(account, Response(findBankResult.error!!, findBankResult.errorType))
+      return Response(findBankResult.error!!, findBankResult.errorType)
     }
 
-    return getAccountData(param, findBankResult.foundBank, account)
+    return getAccountData(param, findBankResult.foundBank)
   }
 
-  private fun getAccountData(param: GetAccountDataParameter, bank: BankData, account: BankAccount): RetrievedAccountData {
+  private fun getAccountData(param: GetAccountDataParameter, bank: BankData): Response<RetrievedAccountData> {
     val transactionsResponse = getAccountTransactions(param, bank)
 
     if (transactionsResponse.data != null) {
-      return RetrievedAccountData(transactionsResponse.data.account, transactionsResponse as Response<RetrievedTransactions>)
+      return Response(RetrievedAccountData(transactionsResponse.data.account, transactionsResponse.data))
     }
 
-    return RetrievedAccountData(account, transactionsResponse as Response<RetrievedTransactions>)
+    return transactionsResponse as Response<RetrievedAccountData>
   }
 
   private fun getAccountTransactions(param: GetAccountDataParameter, bank: BankData): Response<RetrievedTransactionsWithAccount> {
@@ -95,6 +89,19 @@ class BankingService {
     calendar.add(Calendar.DATE, -90)
 
     return Date(calendar.time.time)
+  }
+
+
+  private fun getAccountsData(param: GetAccountsDataParameter, bank: BankData, accounts: List<BankAccountIdentifier>): List<Response<RetrievedAccountData>> {
+    val futures = accounts.map { account ->
+      CompletableFuture.supplyAsync {
+        val getDataParam = GetAccountDataParameter(param.credentials, account, param.alsoRetrieveBalance, param.getTransactionsOfLast90Days, param.fromDate, param.toDate, param.abortIfTanIsRequired)
+        getAccountData(getDataParam, bank) }
+    }
+
+    CompletableFuture.allOf(*futures.toTypedArray()).get() // why does get() return null and not the result of the single futures (List<Response<RetrievedAccountData>>)?
+
+    return futures.map { it.get() }
   }
 
 

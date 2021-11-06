@@ -3,5 +3,5 @@ package net.codinux.banking.rest.domain.model
 
 class RetrievedAccountData(
   val account: BankAccount,
-  val retrieveTransactionsResponse: Response<RetrievedTransactions>
+  val retrieveTransactions: RetrievedTransactions
 )

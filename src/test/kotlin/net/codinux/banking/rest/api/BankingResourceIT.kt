@@ -103,16 +103,16 @@ class BankingResourceIT {
     val response = postAndValidateBasicData(endpoint, body)
 
     response.then()
-      .body("account", not(nullValue()))
-      .body("retrieveTransactionsResponse", not(nullValue()))
-      .body("retrieveTransactionsResponse.type", `is`("Success"))
-      .body("retrieveTransactionsResponse.error", nullValue())
-      .body("retrieveTransactionsResponse.errorType", nullValue())
-      .body("retrieveTransactionsResponse.data", not(nullValue()))
-      .body("retrieveTransactionsResponse.tanRequired", nullValue())
+      .body("type", `is`("Success"))
+      .body("error", nullValue())
+      .body("errorType", nullValue())
+      .body("data", not(nullValue()))
+      .body("tanRequired", nullValue())
+      .body("data.account", not(nullValue()))
+      .body("data.retrieveTransactions", not(nullValue()))
 
 
-    val result = response.jsonPath().getObject("retrieveTransactionsResponse.data", RetrievedTransactions::class.java)
+    val result = response.jsonPath().getObject("data.retrieveTransactions", RetrievedTransactions::class.java)
 
     assertThat(result).isNotNull()
     assertThat(result.balance).isNotNull()
