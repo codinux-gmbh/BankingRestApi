@@ -1,5 +1,7 @@
 package net.codinux.banking.rest.domain.model
 
+import net.codinux.banking.rest.domain.config.ClientConfiguration
+import net.codinux.banking.rest.domain.config.waitAtMaximumTillRequestTimeout
 import java.util.concurrent.CountDownLatch
 
 
@@ -20,9 +22,9 @@ class AsyncResponseHolder<T> {
 
 
     fun waitForResponse(): Response<T> {
-        responseReceivedLatch.await()
+        responseReceivedLatch.waitAtMaximumTillRequestTimeout()
 
-        return response!!
+        return response ?: Response("Could not get response after ${ClientConfiguration.MaxWaitTimeForResponseMinutes}", ErrorType.InternalError)
     }
 
     fun resetAfterEnteringTan() {

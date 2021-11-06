@@ -2,6 +2,7 @@ package net.codinux.banking.rest.domain
 
 import net.codinux.banking.rest.domain.clients.fints4k.fints4kBankingClient
 import net.codinux.banking.rest.domain.clients.hbci4j.hbci4jBankingClient
+import net.codinux.banking.rest.domain.config.waitAtMaximumTillRequestTimeout
 import net.codinux.banking.rest.domain.model.*
 import net.codinux.banking.rest.domain.model.tan.EnterTanResult
 import net.codinux.banking.rest.domain.model.tan.TanChallenge
@@ -200,9 +201,9 @@ class BankingService {
 
     responseHolder.setResponse(Response(TanRequired(tanRequestId, tanChallenge)))
 
-    enterTanLatch.await()
+    enterTanLatch.waitAtMaximumTillRequestTimeout()
 
-    return enterTanResult.get()
+    return enterTanResult.get() ?: EnterTanResult(null)
   }
 
 

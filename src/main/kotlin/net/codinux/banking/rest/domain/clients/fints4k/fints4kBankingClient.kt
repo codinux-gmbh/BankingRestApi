@@ -1,5 +1,6 @@
 package net.codinux.banking.rest.domain.clients.fints4k
 
+import net.codinux.banking.rest.domain.config.waitAtMaximumTillRequestTimeout
 import net.codinux.banking.rest.domain.model.*
 import net.codinux.banking.rest.domain.model.BankData
 import net.dankito.banking.fints.callback.SimpleFinTsClientCallback
@@ -63,9 +64,9 @@ class fints4kBankingClient(
       countDownLatch.countDown()
     }
 
-    countDownLatch.await()
+    countDownLatch.waitAtMaximumTillRequestTimeout()
 
-    return responseHolder.get()
+    return responseHolder.get() ?: EnterTanResult.userDidNotEnterTan()
   }
 
   private fun selectTanMethod(supportedTanMethods: List<TanMethod>, suggestedTanMethod: TanMethod?): TanMethod? {
